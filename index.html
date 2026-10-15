@@ -1,90 +1,87 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bart — веб‑ассистент</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script type="module" src="js/app.js" defer></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#121828">
+<script>try{var t=localStorage.bart_theme;if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
+<title>Bart — ИИ-ассистент</title>
+<link rel="icon" href="https://i.ibb.co/1pCX2Nr/image-Photoroom.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <!-- ==== HEADER ==== -->
-  <header class="brand">
-    <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="logo">
-    <span>Bart</span>
-    <button id="menuBtn" class="ic" data-ic="menu"></button>
-  </header>
 
-  <!-- ==== MAIN ==== -->
-  <div id="app">
-    <!-- SIDE (скрывается на <768px) -->
-    <aside id="side">
-      <button id="new" class="row btn">
-        <i class="ic" data-i="plus"></i> Новый чат
-      </button>
-      <div class="srch">
-        <i class="ic" data-i="search"></i>
-        <input type="text" placeholder="Поиск чатов..." id="search">
-      </div>
-      <div id="list"></div>
-    </aside>
-
-    <!-- CHAT -->
-    <section id="chat" class="screen">
-      <!-- AUTH (показывается только если пользователь не авторизован) -->
-      <div id="auth" class="card">
-        <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" class="logo" alt="logo">
-        <h1>Добро пожаловать</h1>
-        <div class="tabs">
-          <button id="tabLogin" class="on">Вход</button>
-          <button id="tabRegister">Регистрация</button>
-        </div>
-
-        <!-- Вход -->
-        <form id="loginForm">
-          <input type="email" id="loginEmail" placeholder="Email" required>
-          <input type="password" id="loginPass" placeholder="Пароль" required>
-          <button class="btn" type="submit">Войти</button>
-        </form>
-
-        <!-- Регистрация -->
-        <form id="registerForm" hidden>
-          <input type="email" id="regEmail" placeholder="Email" required>
-          <input type="password" id="regPass" placeholder="Пароль (мин. 6 символов)" required>
-          <button class="btn" type="submit">Создать аккаунт</button>
-        </form>
-
-        <div class="row">
-          <button id="googleSignIn" class="btn alt">
-            <i class="ic" data-i="google"></i> Войти через Google
-          </button>
-        </div>
-
-        <div class="err" id="authError"></div>
-      </div>
-
-      <!-- Основной чат (скрыт до авторизации) -->
-      <div id="chatContainer" hidden class="flex-col">
-        <div id="messages" class="flex-1 overflow-auto"></div>
-
-        <!-- Галерея вложений -->
-        <div id="gallery" class="gallery"></div>
-
-        <!-- INPUT -->
-        <form id="msgForm" class="row">
-          <textarea id="msgInput" placeholder="Введите сообщение…" rows="1"></textarea>
-          <button id="attachBtn" type="button" class="ic" data-ic="attachFile"></button>
-          <button id="sendBtn" type="submit" class="ic" data-ic="send"></button>
-        </form>
-        <input type="file" id="fileInput" multiple hidden>
-      </div>
-    </section>
+<section id="auth" class="screen" hidden>
+  <div class="card">
+    <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart">
+    <h1>Bart</h1><p class="sub">ИИ-ассистент: текст, код, фото, файлы, картинки</p>
+    <div class="tabs"><button data-tab="email" class="on">Почта</button><button data-tab="phone">Телефон</button></div>
+    <form id="f-email">
+      <input id="em" type="email" placeholder="Почта" autocomplete="email" required>
+      <input id="pw" type="password" placeholder="Пароль (от 6 символов)" autocomplete="current-password">
+      <div class="row"><button class="btn" type="submit">Войти</button><button class="btn alt" type="button" id="reg">Регистрация</button></div>
+      <a id="reset">Забыли пароль?</a>
+    </form>
+    <form id="f-phone" hidden>
+      <input id="ph" type="tel" placeholder="+7 999 123-45-67" autocomplete="tel">
+      <input id="cd" type="text" inputmode="numeric" placeholder="Код из SMS" hidden>
+      <button class="btn" type="submit" id="phb">Получить код</button>
+    </form>
+    <div id="recaptcha"></div>
+    <p id="err" class="err"></p>
   </div>
+</section>
 
-  <!-- MODAL (для просмотра изображений) -->
-  <div id="modal" hidden class="modal">
-    <img id="modalImg" src="" alt="">
-    <button id="modalClose" class="ic" data-ic="close"></button>
+<section id="verify" class="screen" hidden>
+  <div class="card">
+    <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">
+    <h1>Подтвердите почту</h1>
+    <p class="sub">Мы отправили письмо со ссылкой на <b id="vem"></b>. Перейдите по ссылке (проверьте «Спам»), затем вернитесь сюда.</p>
+    <button class="btn" id="vok">Я подтвердил</button>
+    <div class="row"><button class="btn alt" id="vre">Отправить ещё раз</button><button class="btn alt" id="vout">Выйти</button></div>
+    <p id="verr" class="err"></p>
   </div>
+</section>
+
+<div id="app" hidden>
+  <div id="shade"></div>
+  <aside id="side">
+    <div class="brand"><img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">Bart</div>
+    <button class="btn" id="new"><span data-ic="plus"></span> Новый чат</button>
+    <div class="srch"><span data-ic="search"></span><input id="q" placeholder="Поиск по чатам"></div>
+    <div id="list"></div>
+    <div class="foot"><div><div id="who"></div><small id="dev"></small></div><button class="icb" id="theme" title="Тема" data-ic="theme"></button><button class="icb" id="out" title="Выйти" data-ic="logout"></button></div>
+  </aside>
+  <main>
+    <header><button class="icb" id="menu" data-ic="menu"></button><span id="ttl">Новый чат</span><span class="pill">Bart-beta</span></header>
+    <div id="hero">
+      <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">
+      <h2>Чем помочь, сэр?</h2>
+      <div class="sug"><button>Нарисуй уютный домик в лесу</button><button>Напиши код сайта-визитки</button><button>Разбери мой файл</button><button>Опиши, что на фото</button></div>
+    </div>
+    <div id="msgs"></div>
+    <footer>
+      <div id="chips"></div>
+      <div class="box">
+        <button class="icb" id="clip" data-ic="attachFile" title="Файл"></button>
+        <button class="icb" id="cam" data-ic="camera" title="Фото"></button>
+        <button class="icb" id="mic" data-ic="mic" title="Голосовой ввод"></button>
+        <textarea id="inp" rows="1" placeholder="Напишите сообщение…"></textarea>
+        <button class="send" id="go" data-ic="send"></button>
+      </div>
+      <input type="file" id="fi" multiple hidden>
+      <p class="hint">Bart может ошибаться. Проверяйте важное.</p>
+      <input type="file" id="ci" accept="image/*" capture="environment" hidden>
+    </footer>
+  </main>
+</div>
+<div id="toast" hidden></div>
+<div id="modal" hidden><button class="icb" id="mx" data-ic="close"></button><iframe sandbox="allow-scripts"></iframe></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
