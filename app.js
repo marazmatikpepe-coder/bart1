@@ -2,8 +2,9 @@ import {CFG} from './config.js';
 import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const K=Object.fromEntries(Object.entries(CFG).filter(([k])=>k!=='modelApi').map(([k,v])=>[k,atob(v)]));
+const K=Object.fromEntries(Object.entries(CFG).filter(([k])=>!['modelApi','modelscope'].includes(k)).map(([k,v])=>[k,atob(v)]));
 const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq}};
+const MS_TOKEN=CFG.modelscope||'';const MS_API='https://api-inference.modelscope.ai';
 const MAX=12000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z')};
@@ -37,10 +38,10 @@ function follow(c){unw?.();unw=db.watch(c.id,d=>{if(!S.busy&&S.chat?.id==d.id&&d
 
 /* ---------- ModelScope gateway: API key stays on the server ---------- */
 // Deploy worker/model-scope-worker.js and set MODEL_API to its public URL in js/config.js.
-const MODEL_API=(CFG.modelApi||'').replace(/\/$/,'');
+const MODEL_API=MS_API;
 async function stream(model,messages,onD,sig){
- if(!MODEL_API)throw new Error('ИИ ещё не подключён: разверните worker/model-scope-worker.js и укажите его адрес в js/config.js');
- const r=await fetch(MODEL_API+'/chat',{method:'POST',signal:sig,headers:{'Content-Type':'application/json'},body:JSON.stringify({model,messages,stream:true})});
+ if(!MS_TOKEN)throw new Error('В js/config.js не указан токен ModelScope.');
+ const r=await fetch(MODEL_API+'/v1/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json','Authorization':'Bearer '+MS_TOKEN},body:JSON.stringify({model,messages,stream:true,max_tokens:3072,temperature:0.6})});
  if(!r.ok)throw new Error(await readableApiError(r));
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
  for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
@@ -50,8 +51,8 @@ async function stream(model,messages,onD,sig){
 }
 async function readableApiError(r){let body='';try{body=await r.text()}catch{};let msg='';try{msg=JSON.parse(body).error?.message||JSON.parse(body).message||''}catch{};
  if(r.status===429)return 'ModelScope временно ограничил частоту запросов (429). Подождите 30–60 секунд и отправьте запрос один раз.';
- if(r.status===401||r.status===403)return 'ModelScope не принял токен. Проверьте секрет MODELSCOPE_TOKEN в настройках Worker.';
- if(r.status===404)return 'Модель или API-маршрут не найдены (404). Проверьте имя модели в Worker.';
+ if(r.status===401||r.status===403)return 'ModelScope не принял токен. Проверьте токен в js/config.js и права доступа к API.';
+ if(r.status===404)return 'ModelScope не нашёл модель или API-маршрут (404). Проверьте доступность модели в аккаунте.';
  if(r.status===400)return 'Модель отклонила формат запроса (400)'+(msg?': '+msg.slice(0,220):'. Проверьте вложения и историю чата.');
  return `ModelScope вернул ошибку ${r.status}`+(msg?`: ${msg.slice(0,220)`:'.');
 }
@@ -62,14 +63,18 @@ async function tryChain(list,messages,onD,sig,label){
 }
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
 async function draw(am,t,sig){
- if(!MODEL_API)throw new Error('Генерация картинок ещё не подключена: настройте ModelScope Worker в js/config.js');
+ if(!MS_TOKEN)throw new Error('В js/config.js не указан токен ModelScope.');
  am.m='Qwen-Image · ModelScope';live(am);
- const r=await fetch(MODEL_API+'/image',{method:'POST',signal:sig,headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:t})});
+ const headers={'Content-Type':'application/json','Authorization':'Bearer '+MS_TOKEN};
+ const r=await fetch(MODEL_API+'/v1/images/generations',{method:'POST',signal:sig,headers:{...headers,'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt:t.slice(0,4000)})});
  if(!r.ok)throw new Error(await readableApiError(r));
- const result=await r.json();if(!result.url)throw new Error('ModelScope завершил задачу без ссылки на изображение.');
- am.img=result.url;am.t='Готово, сэр. Изображение создано моделью Qwen-Image.';
+ const started=await r.json();if(!started.task_id)throw new Error('ModelScope не вернул task_id для генерации.');
+ let imageUrl='';for(let i=0;i<48;i++){await new Promise((resolve,reject)=>{const id=setTimeout(resolve,5000);sig?.addEventListener('abort',()=>{clearTimeout(id);reject(new DOMException('Aborted','AbortError'))},{once:true})});const pr=await fetch(MODEL_API+'/v1/tasks/'+encodeURIComponent(started.task_id),{signal:sig,headers:{'Authorization':'Bearer '+MS_TOKEN,'X-ModelScope-Task-Type':'image_generation'}});if(!pr.ok)throw new Error(await readableApiError(pr));const st=await pr.json();if(st.task_status==='SUCCEED'){imageUrl=st.output_images?.[0]||'';break}if(st.task_status==='FAILED')throw new Error('Qwen-Image не смог создать изображение. Попробуйте изменить запрос.')}
+ if(!imageUrl)throw new Error('Генерация изображения заняла слишком много времени. Попробуйте позже.');
+ am.img=imageUrl;am.t='Готово, сэр. Изображение создано моделью Qwen-Image.';
 }
-const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
+const CODE_RE=new RegExp('zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\\b|class\\b|def\\b|верстк','i');
+const CODE_EXT=new RegExp('\\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$','i');
 const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении.';
 function build(hist){
  const tail=hist.slice(-8);let chars=0;
@@ -107,15 +112,15 @@ function renderList(list){CH=list;const q=$('#q').value.toLowerCase();
 function fileIcon(name){const e=(name.split('.').pop()||'FILE').toLowerCase();const map={pdf:'file-text',doc:'file-text',docx:'file-text',xls:'table',xlsx:'table',ppt:'presentation',pptx:'presentation',zip:'archive',rar:'archive',7z:'archive',js:'code',ts:'code',py:'code',html:'code',css:'code',json:'braces',txt:'file-text',md:'file-text',mp3:'music',wav:'music',mp4:'film',mov:'film'};return map[e]||'file'}
 const fileSvg={file:sv('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8'), 'file-text':sv('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8'),table:sv('M3 4h18v16H3zM3 10h18M9 4v16M15 4v16'),presentation:sv('M3 4h18v12H3zM12 16v5M8 21h8'),archive:sv('M4 4h16v16H4zM9 4v4h6V4M10 12h4M10 15h4'),code:sv('m8 8-4 4 4 4m8-8 4 4-4 4m-3-10-2 12'),braces:sv('M8 4H6a2 2 0 0 0-2 2v3a2 2 0 0 1-2 3 2 2 0 0 1 2 3v3a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 3 2 2 0 0 0-2 3v3a2 2 0 0 1-2 2h-2'),music:sv('M9 18V5l12-2v13M9 18a3 3 0 1 1-3-3c1.7 0 3 1 3 3zm12-2a3 3 0 1 1-3-3c1.7 0 3 1 3 3z'),'film':sv('M4 4h16v16H4zM4 8h16M4 16h16M8 4v4M16 4v4M8 16v4M16 16v4')};
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
- $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r==='user'?`<div class="m u"><div class="b">${(()=>{const imgs=(m.a||[]).filter(a=>a.k==='img'),files=(m.a||[]).filter(a=>a.k!=='img');return `${imgs.length?`<div class="media-album count-${Math.min(imgs.length,4)}">${imgs.slice(0,4).map((a,j)=>`<a class="album-item" href="${esc(a.u||'#')}" ${a.u?'target="_blank" rel="noopener"':''} aria-label="Открыть изображение ${j+1}"><img src="${esc(a.u||DATA.get(a)||'')}" loading="lazy" alt="${esc(a.n||'Изображение')}">${imgs.length>4&&j===3?`<span class="album-more">+${imgs.length-4}</span>`:''}</a>`).join('')}</div>`:''}${files.map(a=>`<div class="file-card"><span class="file-icon">${fileSvg[fileIcon(a.n)]||fileSvg.file}</span><span class="file-info"><strong>${esc(a.n)}</strong><small>${esc(a.mime||'Файл')} · ${esc(a.sizeLabel||'вложение')}</small></span><span class="file-ext">${esc((a.n.split('.').pop()||'FILE').slice(0,5).toUpperCase())}</span></div>`).join('')}`})()}${esc(m.t)}</div></div>`
+ $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r==='user'?`<div class="m u"><div class="b">${(()=>{const imgs=(m.a||[]).filter(a=>a.k==='img'),files=(m.a||[]).filter(a=>a.k!=='img');return `${imgs.length?`<div class="media-album count-${Math.min(imgs.length,4)}">${imgs.slice(0,4).map((a,j)=>`<a class="album-item" href="${esc(a.u||DATA.get(a)||'#')}" ${a.u?'target="_blank" rel="noopener"':''} aria-label="Открыть изображение ${j+1}"><img src="${esc(a.u||DATA.get(a)||'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')}" data-local-image="${esc(a.u?'':a.id||'')}" loading="lazy" alt="${esc(a.n||'Изображение')}">${imgs.length>4&&j===3?`<span class="album-more">+${imgs.length-4}</span>`:''}</a>`).join('')}</div>`:''}${files.map(a=>`<button type="button" class="file-card" data-file-download="${esc(a.id||'')}" title="Скачать ${esc(a.n)}"><span class="file-icon">${fileSvg[fileIcon(a.n)]||fileSvg.file}</span><span class="file-info"><strong>${esc(a.n)}</strong><small>${esc(a.mime||'Файл')} · ${esc(a.sizeLabel||'вложение')}</small></span><span class="file-ext">${ic('download')}</span></button>`).join('')}`})()}${esc(m.t)}</div></div>`
   :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt="Созданное изображение"><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
- $('#msgs').scrollTop=1e9;renderList(CH)}
+ $('#msgs').scrollTop=1e9;renderList(CH);hydrateLocalImages()}
 let raf=0;function live(am){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e)return;$('.md',e).innerHTML=md(am.t)||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9})}
 async function send(){
  if(S.busy){ctl?.abort();return}
  const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
  S.files=[];chips();$('#inp').value='';grow();
- const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,sizeLabel:f.sizeLabel||'',mime:f.mime||''};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
+ const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={id:f.id||'',k:f.k,n:f.n,u:f.url||null,x:f.text||null,sizeLabel:f.sizeLabel||'',mime:f.mime||''};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
  c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
  try{await run(c,am)}catch(e){if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
@@ -131,7 +136,7 @@ $('#list').onclick=async e=>{const d=e.target.closest('[data-del]');
  if(d){e.stopPropagation();if(confirm('Удалить чат?')){await db.del(d.dataset.del);if(S.chat?.id==d.dataset.del){S.chat=null;renderMsgs()}}return}
  const i=e.target.closest('[data-id]');if(i){S.chat=CH.find(c=>c.id==i.dataset.id);follow(S.chat);renderMsgs();document.body.classList.remove('side')}};
 $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#inp').focus()});
-$('#msgs').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
+$('#msgs').onclick=async e=>{const dl=e.target.closest('[data-file-download]');if(dl){await downloadAttachment(dl.dataset.fileDownload);return}const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
  if(a=='zip'){await lib(JSZ);const z=new JSZip();namedFiles(S.chat.msgs[b.dataset.mi].t).forEach(([n,c])=>z.file(n,c));dlBlob(await z.generateAsync({type:'blob'}),'bart-project.zip');return}
  const code=$('code',b.closest('.code')).textContent;
@@ -140,6 +145,12 @@ $('#msgs').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;c
  if(a=='run'){$('#modal iframe').srcdoc=code;$('#modal').hidden=false}};
 $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 
+async function hydrateLocalImages(){for(const im of $$('#msgs img[data-local-image]')){const id=im.dataset.localImage;if(!id||im.dataset.hydrated)return;im.dataset.hydrated='1';try{const d=await attDB(),v=await new Promise((resolve,reject)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});d.close();if(v?.blob)im.src=URL.createObjectURL(v.blob)}catch(e){console.warn('Не удалось восстановить локальное изображение',e)}}}
+/* Local attachment store: keeps original files downloadable after refresh on this browser. */
+const ATT_DB='bart-attachments-v1';
+function attDB(){return new Promise((resolve,reject)=>{const q=indexedDB.open(ATT_DB,1);q.onupgradeneeded=()=>q.result.createObjectStore('files');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
+async function saveAttachment(id,blob,name,type){const d=await attDB();return new Promise((resolve,reject)=>{const t=d.transaction('files','readwrite');t.objectStore('files').put({blob,name,type},id);t.oncomplete=()=>{d.close();resolve()};t.onerror=()=>{d.close();reject(t.error)}})}
+async function downloadAttachment(id){if(!id){toast('Исходный файл недоступен на этом устройстве.');return}try{const d=await attDB(),v=await new Promise((resolve,reject)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});d.close();if(!v){toast('Файл сохранён на другом устройстве или отсутствует в локальном хранилище.');return}dlBlob(v.blob,v.name||'attachment')}catch(e){toast('Не удалось скачать вложение: '+e.message)}}
 /* ---------- файлы и картинки ---------- */
 function chips(){$('#chips').innerHTML=S.files.map((f,i)=>`<span class="pending-file ${f.err?'bad':''}"><span class="pending-icon">${ic(f.k==='img'?'camera':'attachFile')}</span><span class="pending-info"><b>${esc(f.n)}</b><small>${esc(f.sizeLabel||'Подготовка…')}${f.err?' · '+esc(f.err):f.ok?' · готово':' · обрабатывается'}</small></span><button type="button" data-r="${i}" aria-label="Убрать вложение">×</button></span>`).join('')}
 $('#chips').onclick=e=>{const r=e.target.dataset.r;if(r!=null){S.files.splice(r,1);chips()}};
@@ -175,8 +186,8 @@ async function readFile(f,it){
  else{if(f.size>3e6)throw new Error('текстовый файл больше 3 МБ');const t=await f.text();if(/\u0000/.test(t)||(t.match(/\uFFFD/g)||[]).length>20){it.text=`[Файл «${f.name}» прикреплён (${f.type||'неизвестный тип'}, ${it.sizeLabel}), но браузер не умеет извлечь из этого формата текст. Попроси пользователя конвертировать его в PDF/TXT или поддерживаемый документ.]`}else it.text=t}
 }
 const humanSize=n=>n<1024?`${n} Б`:n<1048576?`${(n/1024).toFixed(1)} КБ`:`${(n/1048576).toFixed(1)} МБ`;
-async function addFiles(list){for(const f of list){const it={n:f.name||'photo.jpg',k:'file',mime:f.type||'Файл',sizeLabel:humanSize(f.size),size:f.size};S.files.push(it);chips();
- try{await readFile(f,it);if(it.text&&it.text.length>MAX)it.text=it.text.slice(0,MAX)+'\n…[текст обрезан]';it.ok=true}catch(e){it.err=e.message||'ошибка'}chips()}}
+async function addFiles(list){for(const f of list){const it={id:crypto.randomUUID(),n:f.name||'photo.jpg',k:'file',mime:f.type||'Файл',sizeLabel:humanSize(f.size),size:f.size};S.files.push(it);chips();
+ try{await saveAttachment(it.id,f,it.n,it.mime);await readFile(f,it);if(it.text&&it.text.length>MAX)it.text=it.text.slice(0,MAX)+'\n…[текст обрезан]';it.ok=true}catch(e){it.err=e.message||'ошибка'}chips()}}
 /* ---------- голосовой ввод (Whisper) ---------- */
 let rec,chunks;
 async function mic(){const b=$('#mic');if(rec){rec.stop();return}
@@ -201,7 +212,7 @@ const er=e=>ER[e.code]||e.message||'Неизвестная ошибка',fail=(m
 let authMode='login';function setAuthMode(mode){authMode=mode;$$('[data-auth-mode]').forEach(b=>b.classList.toggle('on',b.dataset.authMode===mode));$('#auth-submit').textContent=mode==='login'?'Войти':'Создать аккаунт';$('#pw').autocomplete=mode==='login'?'current-password':'new-password';$('#reset').hidden=mode!=='login';fail('')}
 $$('[data-auth-mode]').forEach(b=>b.onclick=()=>setAuthMode(b.dataset.authMode));
 async function enter(u){uid=u?u.uid:'local';fs=u?{...fb.f,db:fb.db}:null;S.chat=null;unl?.();show('app');$('#who').textContent=u?(u.email||u.displayName||'Аккаунт Google'):'Локальный режим';$('#out').hidden=!u;$('#dev').textContent=u?'':'данные только на этом устройстве';unl=db.list(l=>{renderList(l);if(!S.busy&&!S.chat)renderMsgs()});renderMsgs();if(u){const did=localStorage.bart_dev||(localStorage.bart_dev=Math.random().toString(36).slice(2,8)),R=fb.d,pr=R.ref(fb.rt,`presence/${uid}/${did}`);R.set(pr,{ua:navigator.userAgent.slice(0,60),t:Date.now()});R.onDisconnect(pr).remove();R.onValue(R.ref(fb.rt,`presence/${uid}`),s=>$('#dev').textContent='☁ синхронизация · онлайн: '+Object.keys(s.val()||{}).length)}}
-let vt;async function boot(){if(FB.apiKey.startsWith('PASTE'))return enter(null);const m=await Promise.all(['app','auth','firestore','database'].map(n=>import(`${G}firebase-${n}.js`)));const app=m[0].initializeApp(FB);fb={au:m[1],f:m[2],d:m[3],auth:m[1].getAuth(app),db:m[2].getFirestore(app),rt:m[3].getDatabase(app)};const A=fb.au;
+let vt;async function boot(){if(FB.apiKey.startsWith('PASTE'))return enter(null);const names=['app','auth','firestore','database'];let m;try{m=await Promise.all(names.map(n=>import(`${G}firebase-${n}.js`)))}catch(primary){console.warn('Firebase gstatic недоступен, пробую запасной CDN',primary);try{m=await Promise.all([import('https://esm.sh/firebase-app@10.12.2'),import('https://esm.sh/firebase-auth@10.12.2'),import('https://esm.sh/firebase-firestore@10.12.2'),import('https://esm.sh/firebase-database@10.12.2')])}catch(secondary){throw new Error('Firebase SDK не загрузился ни с основного, ни с запасного CDN. Проверьте сеть/блокировщик. '+secondary.message)}}const app=m[0].initializeApp(FB);fb={au:m[1],f:m[2],d:m[3],auth:m[1].getAuth(app),db:m[2].getFirestore(app),rt:m[3].getDatabase(app)};const A=fb.au;
  A.onAuthStateChanged(fb.auth,u=>{clearInterval(vt);if(!u){unl?.();show('auth');return}if(u.email&&!u.emailVerified&&!u.providerData.some(p=>p.providerId==='google.com')){$('#vem').textContent=u.email;show('verify');vt=setInterval(async()=>{try{await u.reload();if(u.emailVerified){clearInterval(vt);enter(u)}}catch(e){}},4000);return}enter(u)});
  $('#f-email').onsubmit=async e=>{e.preventDefault();fail('');const email=$('#em').value.trim(),password=$('#pw').value;if(password.length<6){fail('Пароль должен содержать не менее 6 символов');return}const submit=$('#auth-submit');submit.disabled=true;submit.textContent='Подождите…';try{if(authMode==='login')await A.signInWithEmailAndPassword(fb.auth,email,password);else{const r=await A.createUserWithEmailAndPassword(fb.auth,email,password);await A.sendEmailVerification(r.user)}}catch(x){fail(er(x))}finally{submit.disabled=false;submit.textContent=authMode==='login'?'Войти':'Создать аккаунт'}};
  $('#google').onclick=async()=>{fail('');const b=$('#google');b.disabled=true;try{const provider=new A.GoogleAuthProvider();if(matchMedia('(pointer: coarse)').matches)await A.signInWithRedirect(fb.auth,provider);else await A.signInWithPopup(fb.auth,provider)}catch(x){fail(er(x));b.disabled=false}};A.getRedirectResult(fb.auth).catch(x=>fail(er(x)));
