@@ -1,112 +1,171 @@
-:root{--cv:#eef0f3;--pn:#fff;--pn2:#f3f4f6;--t:#16181d;--m:#6b7280;--b:#dfe2e8;--a:#2f5f8f;--ah:#264d75;--on:#fff;--icf:brightness(0);--sh:0 1px 2px #0000000a}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--cv:#0f1115;--pn:#171a20;--pn2:#1f232b;--t:#e8eaed;--m:#9aa1ad;--b:#2a2f38;--a:#6f9fcb;--ah:#86b1d8;--on:#0f1115;--icf:brightness(0) invert(1);--sh:0 1px 2px #0006}}
-:root[data-theme=dark]{--cv:#0f1115;--pn:#171a20;--pn2:#1f232b;--t:#e8eaed;--m:#9aa1ad;--b:#2a2f38;--a:#6f9fcb;--ah:#86b1d8;--on:#0f1115;--icf:brightness(0) invert(1);--sh:0 1px 2px #0006}
-*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
-html,body{height:100%}
-body{background:var(--cv);color:var(--t);font:15px/1.65 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
-[hidden]{display:none!important}
-button,input,textarea{font:inherit;color:inherit}
-h1,h2,.brand{font-weight:700;letter-spacing:-.025em}
-.mono,.meta,.pill{font-family:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace}
-.ic{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;flex:none;color:var(--m)}
-.ic svg,.ic img{width:100%;height:100%;object-fit:contain}.ic img{filter:var(--icf);opacity:.7}
-.screen{height:100dvh;display:grid;place-items:center;padding:16px;overflow:auto}
-.card{width:100%;max-width:390px;background:var(--pn);border:1px solid var(--b);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:var(--sh)}
-.card .logo{width:72px;height:72px;object-fit:contain}
-.card h1{font-size:26px;margin-top:8px}
-.sub{color:var(--m);margin:6px 0 20px;font-size:14px}
-.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--pn2);border-radius:12px;padding:4px;margin-bottom:16px}
-.tabs button{border:0;background:none;padding:8px;cursor:pointer;color:var(--m);border-radius:9px}
-.tabs .on{background:var(--pn);color:var(--t);box-shadow:var(--sh);font-weight:600}
-form{display:grid;gap:10px}
-input,textarea{background:var(--pn2);border:1.5px solid transparent;border-radius:12px;padding:11px 14px;outline:none;width:100%}
-input:focus{border-color:var(--a);background:var(--pn)}
-.row{display:flex;gap:10px}.row .btn{flex:1}
-.btn{border:0;border-radius:12px;padding:11px 16px;background:var(--a);color:var(--on);font-weight:600;cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:center}
-.btn:hover{background:var(--ah)}
-.btn.alt{background:var(--pn2);color:var(--t)}.btn.alt:hover{background:var(--b)}
-.card .btn{width:100%}.card .row{margin-top:10px}
-#reset{color:var(--m);font-size:13px;cursor:pointer;text-decoration:underline}
-.err{color:#d6336c;font-size:13px;min-height:18px;margin-top:10px}
-#app{display:flex;height:100dvh;padding:12px;gap:12px}
-#side{width:276px;flex:none;background:var(--pn);border:1px solid var(--b);border-radius:22px;display:flex;flex-direction:column;gap:8px;padding:14px;box-shadow:var(--sh)}
-.brand{display:flex;align-items:center;gap:10px;font-size:22px;padding:2px 4px 8px}.brand img{width:34px;height:34px;object-fit:contain}
-#new{background:var(--pn2);color:var(--t);justify-content:flex-start;padding:10px 12px}#new:hover{background:var(--b)}#new .ic{color:var(--t)}
-.srch{position:relative}.srch .ic{position:absolute;left:11px;top:10px;width:17px;height:17px}.srch input{padding:8px 12px 8px 34px;font-size:14px}
-#list{flex:1;overflow:auto;display:grid;gap:2px;align-content:start;margin-top:4px}
-.ci{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:14px;color:var(--m);}
-.ci span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.ci:hover{background:var(--pn2)}
-/* ---------- NEW: RESPONSIVE ---------- */
-@media (max-width: 768px) {
-  #side{display:none;}
-  #menuBtn{display:inline-flex;}
-  #app{flex-direction:column;}
-}
-@media (min-width: 769px) {
-  #menuBtn{display:none;}
-}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>MyDesk</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 
-/* ---------- NEW: GALLERY ---------- */
-.gallery{
-  display:grid;
-  gap:6px;
-  grid-template-columns:repeat(auto-fill, minmax(80px,1fr));
-  margin:8px 0;
-}
-.gallery-item{
-  position:relative;
-  width:100%;
-  padding-top:100%; /* квадрат */
-  overflow:hidden;
-  border-radius:8px;
-  background:var(--pn2);
-}
-.gallery-item img,
-.gallery-item .file-icon{
-  position:absolute;
-  top:0;left:0;right:0;bottom:0;
-  width:100%;height:100%;
-  object-fit:cover;
-}
-.gallery-item .file-icon{
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:24px;
-  color:var(--m);
-}
-.gallery-item .remove{
-  position:absolute;
-  top:4px;right:4px;
-  background:rgba(0,0,0,0.5);
-  border-radius:50%;
-  width:20px;height:20px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-}
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome (для иконок) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
 
-/* ---------- NEW: MODAL ---------- */
-.modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.8);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:1000;
-}
-.modal img{
-  max-width:90%;
-  max-height:90%;
-  border-radius:12px;
-}
-.modal .ic{
-  position:absolute;
-  top:20px;
-  right:20px;
-  background:var(--pn);
-  border-radius:50%;
-}
+    <style>
+        body { background:#f8f9fa; }
+        .hero { background:#fff; padding:2rem; border-radius:.5rem; box-shadow:0 0 10px rgba(0,0,0,.1); }
+        .nav-tabs .nav-link { cursor:pointer; }
+        .date-picker, .time-picker { max-width:250px; }
+    </style>
+</head>
+<body class="container py-4">
+
+    <!-- Шапка -->
+    <header class="mb-4 text-center">
+        <h1 class="display-4">MyDesk</h1>
+    </header>
+
+    <!-- Приветствие и фичи -->
+    <section class="hero mb-5">
+        <h2 class="h4">Добро пожаловать в MyDesk</h2>
+        <p>Ваше единое пространство для заметок, задач и расписания</p>
+        <ul class="list-unstyled">
+            <li>📝 <strong>Заметки и задачи</strong> – записывайте идеи, создавайте задачи и организуйте информацию</li>
+            <li>📅 <strong>Расписание и календарь</strong> – планируйте день с удобным расписанием и календарём</li>
+            <li>☁️ <strong>Работает везде</strong> – автосохранение, офлайн‑доступ и синхронизация между устройствами</li>
+        </ul>
+        <div class="d-flex gap-2 mt-3">
+            <button class="btn btn-primary">Далее</button>
+            <button class="btn btn-outline-secondary">Пропустить</button>
+        </div>
+    </section>
+
+    <!-- Авторизация -->
+    <section class="mb-5">
+        <h3 class="h5">Войдите, чтобы синхронизировать данные</h3>
+        <form id="loginForm" class="row g-3">
+            <div class="col-md-6">
+                <label class="form-label">Э‑почта</label>
+                <input type="email" class="form-control" required>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Пароль</label>
+                <input type="password" class="form-control" required>
+            </div>
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-success">Войти</button>
+                <a href="#" class="btn btn-link">Забыли пароль?</a>
+                <a href="#" class="btn btn-link">Нет аккаунта? Создать</a>
+                <button type="button" class="btn btn-outline-primary">Продолжить без аккаунта</button>
+            </div>
+        </form>
+    </section>
+
+    <!-- Навигация проекта -->
+    <section class="mb-4">
+        <ul class="nav nav-tabs">
+            <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#project">Проект</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#files">Файлы</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#code">Код</a></li>
+            <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#preview">Просмотр</a></li>
+        </ul>
+
+        <div class="tab-content border border-top-0 p-3 bg-white">
+            <div class="tab-pane fade show active" id="project">
+                <p>Выберите файл слева</p>
+                <button class="btn btn-outline-success">▶ Запустить</button>
+            </div>
+            <div class="tab-pane fade" id="files">Файлы пока пусты.</div>
+            <div class="tab-pane fade" id="code">Код пока не загружен.</div>
+            <div class="tab-pane fade" id="preview">Превью недоступно.</div>
+        </div>
+    </section>
+
+    <!-- Создание задачи / напоминания -->
+    <section class="border p-4 bg-white rounded">
+        <h4 class="mb-3">Создать задачу / напоминание</h4>
+
+        <div class="row g-3">
+            <!-- Дата -->
+            <div class="col-md-4 date-picker">
+                <label class="form-label">Дата</label>
+                <div class="input-group">
+                    <button class="btn btn-outline-secondary" type="button" id="prevDay"><i class="fa-solid fa-arrow-left"></i></button>
+                    <input type="date" class="form-control" id="taskDate">
+                    <button class="btn btn-outline-secondary" type="button" id="nextDay"><i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+                <div class="form-text">Дата Не выбрана</div>
+            </div>
+
+            <!-- Время -->
+            <div class="col-md-4 time-picker">
+                <label class="form-label">Время</label>
+                <input type="time" class="form-control" id="taskTime">
+                <div class="form-text">Время —</div>
+            </div>
+
+            <!-- Приоритет -->
+            <div class="col-md-4">
+                <label class="form-label">Приоритет</label>
+                <select class="form-select" id="priority">
+                    <option>Низкий</option>
+                    <option selected>Средний</option>
+                    <option>Высокий</option>
+                </select>
+            </div>
+
+            <!-- Напоминание -->
+            <div class="col-12">
+                <label class="form-label">Напомнить</label>
+                <select class="form-select w-50" id="remindBefore">
+                    <option>Вовремя</option>
+                    <option>За 10 минут</option>
+                    <option>За 30 минут</option>
+                    <option>За 1 час</option>
+                    <option>За 1 день</option>
+                </select>
+            </div>
+
+            <!-- Кнопки -->
+            <div class="col-12 d-flex gap-2 mt-3">
+                <button class="btn btn-primary" id="saveBtn">Сохранить</button>
+                <button class="btn btn-success" id="createBtn">Создать</button>
+                <button class="btn btn-outline-secondary" id="historyBtn">История версий</button>
+                <button class="btn btn-outline-info" id="shareBtn">Совместный доступ</button>
+                <button class="btn btn-danger" id="deleteBtn"><i class="fa-solid fa-trash"></i> Удалить</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-5 text-center text-muted">
+        © 2026 MyDesk. Все права защищены.
+    </footer>
+
+    <!-- Bootstrap Bundle (includes Popper) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Простейшие обработчики (заглушки)
+        document.getElementById('loginForm').addEventListener('submit', e => {
+            e.preventDefault();
+            alert('Форма входа пока не подключена к бекенду.');
+        });
+
+        document.getElementById('saveBtn').addEventListener('click', () => alert('Сохранено!'));
+        document.getElementById('createBtn').addEventListener('click', () => alert('Создано!'));
+
+        // Переключение даты – просто меняем значение поля
+        const dateInput = document.getElementById('taskDate');
+        document.getElementById('prevDay').addEventListener('click', () => {
+            const d = new Date(dateInput.value || Date.now());
+            d.setDate(d.getDate() - 1);
+            dateInput.value = d.toISOString().split('T')[0];
+        });
+        document.getElementById('nextDay').addEventListener('click', () => {
+            const d = new Date(dateInput.value || Date.now());
+            d.setDate(d.getDate() + 1);
+            dateInput.value = d.toISOString().split('T')[0];
+        });
+    </script>
+</body>
+</html>
