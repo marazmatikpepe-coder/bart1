@@ -100,3 +100,7 @@ footer{padding:0 16px;padding-bottom:max(14px,env(safe-area-inset-bottom));max-w
  #menu{display:flex}#hero h2{font-size:25px}header{padding-top:max(10px,env(safe-area-inset-top))}
  .m.u .b{max-width:92%}.ci button{opacity:1}.sug{grid-template-columns:1fr}
 }
+
+.zipb{font-size:12px;gap:5px;align-items:center;color:var(--m)}
+.icb.rec{background:#d6336c22;animation:pl 1.2s infinite}.icb.rec .ic{color:#d6336c}
+@keyframes pl{50%{opacity:.55}}

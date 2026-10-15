@@ -6,7 +6,7 @@ const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
 const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq}};
 const MAX=12000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z')};
+const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z')};
 const ic=n=>`<i class="ic" data-i="${n}"></i>`; // сначала встроенная SVG-иконка; если есть assets/icons/<имя>.png (ваши иконки) — подменяется ею
 const hyd=r=>$$('i[data-i]:not([data-h])',r).forEach(e=>{e.dataset.h=1;const n=e.dataset.i;e.innerHTML=SV[n]||'';const im=new Image();im.onload=()=>e.replaceChildren(im);im.src=`assets/icons/${n}.png`});
 new MutationObserver(()=>hyd(document)).observe(document.body,{childList:true,subtree:true});
@@ -15,10 +15,12 @@ const loaded={};const lib=u=>loaded[u]??=new Promise((r,j)=>{const s=document.cr
 const CDN='https://cdnjs.cloudflare.com/ajax/libs/';
 
 /* ---------- markdown ---------- */
-marked.use({renderer:{code(c,l){const lang=(l||'').split(/\s/)[0];const v=lang&&hljs.getLanguage(lang)?hljs.highlight(c,{language:lang}).value:hljs.highlightAuto(c).value;
- return `<div class="code"><div class="ch"><span>${esc(lang||'code')}</span><span><button data-a="copy">${ic('copyIcon')} Копировать</button><button data-a="dl" data-l="${esc(lang)}">${ic('download')} Скачать</button>${/html|svg/.test(lang)?'<button data-a="run">▶ Запуск</button>':''}</span></div><pre><code class="hljs">${v}</code></pre></div>`}}});
+marked.use({renderer:{code(c,l){const [lang='',fn='']=(l||'').trim().split(/\s+/);const v=lang&&hljs.getLanguage(lang)?hljs.highlight(c,{language:lang}).value:hljs.highlightAuto(c).value;
+ return `<div class="code"><div class="ch"><span>${esc(fn||lang||'code')}</span><span><button data-a="copy">${ic('copyIcon')} Копировать</button><button data-a="dl" data-l="${esc(lang)}" data-n="${esc(fn)}">${ic('download')} Скачать</button>${/html|svg/.test(lang)?'<button data-a="run">▶ Запуск</button>':''}</span></div><pre><code class="hljs">${v}</code></pre></div>`}}});
 const clean=t=>(t||'').replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
-const md=t=>DOMPurify.sanitize(marked.parse(clean(t)),{ADD_ATTR:['data-a','data-l','data-i']});
+const namedFiles=t=>[...clean(t).matchAll(/```[^\S\n]*\w[\w+#.-]*[^\S\n]+([^\s`]+)[^\n]*\n([\s\S]*?)```/g)].map(m=>[m[1].replace(/^[\/\\]+/,''),m[2]]).filter(x=>/[./]/.test(x[0]));
+const dlBlob=(b,n)=>{const x=document.createElement('a');x.href=URL.createObjectURL(b);x.download=n;x.click();setTimeout(()=>URL.revokeObjectURL(x.href),5000)};
+const md=t=>DOMPurify.sanitize(marked.parse(clean(t)),{ADD_ATTR:['data-a','data-l','data-n','data-i']});
 const EXT={javascript:'js',js:'js',python:'py',html:'html',css:'css',json:'json',typescript:'ts',bash:'sh',sql:'sql',java:'java',cpp:'cpp',csharp:'cs',markdown:'md',svg:'svg'};
 
 /* ---------- state + storage (Firestore или localStorage) ---------- */
@@ -65,8 +67,8 @@ async function draw(am,t,sig){
    return}
   await new Promise(r=>setTimeout(r,8000))}
  throw new Error('Генератор картинок не ответил (лимит — 1 запрос в 15 секунд). Повторите через минуту.')}
-const CODE_RE=/код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
-const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка; для нескольких файлов давай отдельный блок на каждый, перед ним название файла.';
+const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
+const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении.';
 function build(hist){
  const li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true);
  return [{role:'system',content:SYS},...hist.slice(-12).map((m,j,arr)=>{const i=hist.length-arr.length+j;
@@ -92,8 +94,8 @@ async function run(c,am){
 function renderList(list){CH=list;const q=$('#q').value.toLowerCase();
  $('#list').innerHTML=list.filter(c=>c.title.toLowerCase().includes(q)).map(c=>`<div class="ci ${S.chat?.id==c.id?'on':''}" data-id="${c.id}"><span>${esc(c.title)}</span><button data-del="${c.id}">${ic('delete')}</button></div>`).join('')}
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
- $('#msgs').innerHTML=(c?.msgs||[]).map(m=>m.r=='user'?`<div class="m u"><div class="b">${(m.a||[]).map(a=>a.k=='img'?`<img class="th" src="${esc(a.u||DATA.get(a)||'')}">`:`<span class="chip">${ic('attachFile')} ${esc(a.n)}</span>`).join('')}${esc(m.t)}</div></div>`
-  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
+ $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?`<div class="m u"><div class="b">${(m.a||[]).map(a=>a.k=='img'?`<img class="th" src="${esc(a.u||DATA.get(a)||'')}">`:`<span class="chip">${ic('attachFile')} ${esc(a.n)}</span>`).join('')}${esc(m.t)}</div></div>`
+  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
  $('#msgs').scrollTop=1e9;renderList(CH)}
 let raf=0;function live(am){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e)return;$('.md',e).innerHTML=md(am.t)||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9})}
 async function send(){
@@ -116,11 +118,12 @@ $('#list').onclick=async e=>{const d=e.target.closest('[data-del]');
  if(d){e.stopPropagation();if(confirm('Удалить чат?')){await db.del(d.dataset.del);if(S.chat?.id==d.dataset.del){S.chat=null;renderMsgs()}}return}
  const i=e.target.closest('[data-id]');if(i){S.chat=CH.find(c=>c.id==i.dataset.id);follow(S.chat);renderMsgs();document.body.classList.remove('side')}};
 $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#inp').focus()});
-$('#msgs').onclick=e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
+$('#msgs').onclick=async e=>{const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
+ if(a=='zip'){await lib(JSZ);const z=new JSZip();namedFiles(S.chat.msgs[b.dataset.mi].t).forEach(([n,c])=>z.file(n,c));dlBlob(await z.generateAsync({type:'blob'}),'bart-project.zip');return}
  const code=$('code',b.closest('.code')).textContent;
  if(a=='copy'){navigator.clipboard.writeText(code);const h=b.innerHTML;b.textContent='Готово ✓';setTimeout(()=>b.innerHTML=h,1200)}
- if(a=='dl'){const l=b.dataset.l,x=document.createElement('a');x.href=URL.createObjectURL(new Blob([code]));x.download='bart-code.'+(EXT[l]||l||'txt');x.click()}
+ if(a=='dl')dlBlob(new Blob([code]),b.dataset.n||'bart-code.'+(EXT[b.dataset.l]||b.dataset.l||'txt'));
  if(a=='run'){$('#modal iframe').srcdoc=code;$('#modal').hidden=false}};
 $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 
@@ -129,13 +132,48 @@ function chips(){$('#chips').innerHTML=S.files.map((f,i)=>`<span class="chip ${f
 $('#chips').onclick=e=>{const r=e.target.dataset.r;if(r!=null){S.files.splice(r,1);chips()}};
 const shrink=async f=>{const b=await createImageBitmap(f),k=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=b.width*k;c.height=b.height*k;c.getContext('2d').drawImage(b,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.85)};
 async function up(d){const fd=new FormData();fd.append('image',d.split(',')[1]);const j=await(await fetch('https://api.imgbb.com/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(!j.data)throw 0;return j.data.url}
+const JSZ=CDN+'jszip/3.10.1/jszip.min.js',XLS=CDN+'xlsx/0.18.5/xlsx.full.min.js';
+const ent=x=>x.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
+const xmlText=x=>ent(x.replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<\/(?:text:p|text:h|p|div|h\d|li|tr)>|<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,' ')).replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim();
+const TXT_IN_ZIP=/\.(txt|md|csv|json|xml|ya?ml|toml|ini|cfg|py|js|mjs|ts|jsx|tsx|html?|css|scss|c|cpp|h|hpp|java|kt|php|rb|swift|go|rs|sql|sh|bash|bat|ps1|ipynb|vue|svelte|lua|r|cs|dart|log)$|(^|\/)(Dockerfile|Makefile|README[^\/]*|\.env[^\/]*)$/i;
+async function readFile(f,it){
+ const ext=f.name.toLowerCase().split('.').pop(),buf=()=>f.arrayBuffer();
+ if(f.type.startsWith('image/')||/^(jpe?g|png|gif|webp)$/.test(ext)){it.k='img';it.data=await shrink(f);it.url=await up(it.data).catch(()=>null);return}
+ if(f.size>25e6)throw new Error('файл больше 25 МБ');
+ if(ext=='pdf'){await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
+  const d=await pdfjsLib.getDocument({data:await buf()}).promise;let s='';
+  for(let i=1;i<=Math.min(d.numPages,40)&&s.length<MAX;i++){const rows={};for(const x of(await(await d.getPage(i)).getTextContent()).items)(rows[Math.round(x.transform[5])]??=[]).push(x);
+   s+=Object.keys(rows).sort((a,b)=>b-a).map(y=>rows[y].sort((a,b)=>a.transform[4]-b.transform[4]).map(x=>x.str).join('\t')).join('\n')+'\n\n'}
+  it.text=s;
+  if(s.trim().length<80){it.text='[В PDF нет текстового слоя — страницы приложены как изображения]';
+   for(let i=1;i<=Math.min(d.numPages,3);i++){const p=await d.getPage(i),v=p.getViewport({scale:1.6}),c=document.createElement('canvas');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;const data=c.toDataURL('image/jpeg',.85);S.files.push({k:'img',n:`${f.name} · стр.${i}`,data,url:await up(data).catch(()=>null),ok:true})}}}
+ else if(ext=='docx'){await lib(CDN+'mammoth/1.6.0/mammoth.browser.min.js');it.text=(await mammoth.extractRawText({arrayBuffer:await buf()})).value}
+ else if(ext=='doc'){const u=new Uint8Array(await buf()),pick=x=>(x.match(/[\p{L}\p{N}\p{P}\p{Zs}]{6,}/gu)||[]).join('\n'),A=pick(new TextDecoder('utf-16le').decode(u)),B=pick(new TextDecoder('windows-1251').decode(u));it.text='[Старый формат .doc: текст извлечён приблизительно]\n'+(A.length>B.length?A:B)}
+ else if(/^(xlsx|xlsm|xls|ods)$/.test(ext)){await lib(XLS);const w=XLSX.read(await buf(),{type:'array'});it.text=w.SheetNames.map(n=>`## Лист: ${n}\n`+XLSX.utils.sheet_to_csv(w.Sheets[n]).slice(0,MAX)).join('\n\n')}
+ else if(ext=='pptx'){await lib(JSZ);const z=await JSZip.loadAsync(await buf()),sl=Object.keys(z.files).filter(k=>/^ppt\/slides\/slide\d+\.xml$/.test(k)).sort((a,b)=>a.match(/\d+/)-b.match(/\d+/));
+  it.text=(await Promise.all(sl.map(async(k,i)=>`## Слайд ${i+1}\n`+ent([...(await z.file(k).async('string')).matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m=>m[1]).join(' '))))).join('\n\n')}
+ else if(ext=='odt'){await lib(JSZ);it.text=xmlText(await(await JSZip.loadAsync(await buf())).file('content.xml').async('string'))}
+ else if(ext=='epub'){await lib(JSZ);const z=await JSZip.loadAsync(await buf());let o='';for(const k of Object.keys(z.files).filter(k=>/\.x?html?$/i.test(k)).sort()){if(o.length>MAX)break;o+=xmlText(await z.file(k).async('string'))+'\n\n'}it.text=o}
+ else if(ext=='zip'){await lib(JSZ);const z=await JSZip.loadAsync(await buf()),ns=Object.keys(z.files).filter(k=>!z.files[k].dir);let o='Файлы в архиве:\n'+ns.slice(0,300).join('\n')+'\n';
+  for(const k of ns){if(o.length>MAX)break;if(TXT_IN_ZIP.test(k))o+=`\n\n===== ${k} =====\n`+(await z.file(k).async('string')).slice(0,4000)}it.text=o}
+ else if(ext=='rtf'){it.text=(await f.text()).replace(/\{\\(?:fonttbl|colortbl|stylesheet|info|\*)(?:[^{}]|\{[^{}]*\})*\}/g,'').replace(/\\u(-?\d+)(?:\\'[0-9a-f]{2}|\??)/gi,(m,c)=>String.fromCharCode(c<0?+c+65536:+c)).replace(/\\'([0-9a-f]{2})/gi,(m,h)=>new TextDecoder('windows-1251').decode(new Uint8Array([parseInt(h,16)]))).replace(/\\pard?/g,'\n').replace(/\\tab/g,'\t').replace(/\\[a-z]+-?\d* ?/gi,'').replace(/[{}]/g,'').replace(/\n{3,}/g,'\n\n').trim()}
+ else if(/^html?$/.test(ext))it.text=xmlText(await f.text());
+ else if(ext=='ipynb')it.text=(JSON.parse(await f.text()).cells||[]).map(c=>`# [${c.cell_type}]\n`+[].concat(c.source||[]).join('')).join('\n\n');
+ else{if(f.size>3e6)throw new Error('текстовый файл больше 3 МБ');const t=await f.text();if(/\u0000/.test(t)||(t.match(/\uFFFD/g)||[]).length>20)throw new Error('формат не поддерживается');it.text=t}
+}
 async function addFiles(list){for(const f of list){const it={n:f.name||'photo.jpg',k:'file'};S.files.push(it);chips();
- try{if(f.type.startsWith('image/')){it.k='img';it.data=await shrink(f);it.url=await up(it.data).catch(()=>null)}
-  else if(/\.pdf$/i.test(f.name)){await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';const d=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let s='';for(let i=1;i<=Math.min(d.numPages,40)&&s.length<MAX;i++)s+=(await(await d.getPage(i)).getTextContent()).items.map(x=>x.str).join(' ')+'\n';it.text=s}
-  else if(/\.docx$/i.test(f.name)){await lib(CDN+'mammoth/1.6.0/mammoth.browser.min.js');it.text=(await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
-  else if(f.size<3e6){it.text=await f.text();if((it.text.match(/\uFFFD/g)||[]).length>20)throw new Error('формат не поддерживается')}
-  else throw new Error('файл больше 3 МБ');
-  if(it.text)it.text=it.text.slice(0,MAX);it.ok=true}catch(e){it.err=e.message||'ошибка'}chips()}}
+ try{await readFile(f,it);if(it.text&&it.text.length>MAX)it.text=it.text.slice(0,MAX)+'\n…[текст обрезан]';it.ok=true}catch(e){it.err=e.message||'ошибка'}chips()}}
+/* ---------- голосовой ввод (Whisper) ---------- */
+let rec,chunks;
+async function mic(){const b=$('#mic');if(rec){rec.stop();return}
+ try{const st=await navigator.mediaDevices.getUserMedia({audio:true});chunks=[];rec=new MediaRecorder(st);rec.ondataavailable=e=>chunks.push(e.data);
+  rec.onstop=async()=>{st.getTracks().forEach(t=>t.stop());b.classList.remove('rec');b.innerHTML=ic('mic');const bl=new Blob(chunks,{type:rec.mimeType});rec=null;if(bl.size<1500)return;
+   $('#inp').placeholder='Распознаю речь…';
+   try{const fd=new FormData();fd.append('file',bl,'voice.'+(bl.type.includes('mp4')?'mp4':'webm'));fd.append('model','whisper-large-v3-turbo');
+    const r=await fetch(P.groq.url+'/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+P.groq.key},body:fd});if(!r.ok)throw new Error(r.status);
+    $('#inp').value=($('#inp').value+' '+(await r.json()).text).trim();grow();$('#inp').focus()}catch(e){toast('Не удалось распознать речь ('+e.message+')')}finally{$('#inp').placeholder='Напишите сообщение…'}};
+  rec.start();b.classList.add('rec');b.innerHTML=ic('stop')}catch(e){toast('Нет доступа к микрофону — разрешите его в настройках браузера для этого сайта')}}
+$('#mic').onclick=mic;
 $('#clip').onclick=()=>$('#fi').click();$('#cam').onclick=()=>$('#ci').click();
 $('#fi').onchange=$('#ci').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
 $('#inp').onpaste=e=>{const f=[...e.clipboardData.files];if(f.length){e.preventDefault();addFiles(f)}};
