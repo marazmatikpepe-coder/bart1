@@ -52,11 +52,11 @@ async function stream(p,model,messages,onD,sig){
   for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const d=JSON.parse(l.slice(5)).choices?.[0]?.delta?.content;if(d){got=true;onD(d)}}catch{}}}
  return got}
 async function tryChain(list,messages,onD,sig,label){const errs=[];
- for(const [p,m] of list){try{label('Groq · '+m.split('/').pop());if(await stream(p,m,messages,onD,sig))return;errs.push(m+': пустой ответ')}catch(e){if(e.name=='AbortError')throw e;errs.push(m.split('/').pop()+' → '+e.message.slice(0,140))}}
- throw new Error(errs.slice(0,3).join(' · ')||'Ни одна модель не ответила')}
+ for(const [p,m] of list){try{label('Bart-beta');if(await stream(p,m,messages,onD,sig))return;errs.push(m+': пустой ответ');console.warn('model empty',m)}catch(e){if(e.name=='AbortError')throw e;console.warn('model failed',m,e.message);errs.push(e.message.slice(0,3))}}
+ throw new Error('Bart-beta сейчас не смог ответить (код '+(errs.join('/')||'—')+'). Попробуйте ещё раз; подробности в консоли (F12).')}
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
 async function draw(am,t,sig){
- am.m='Groq → Pollinations · flux';live(am);let p='';
+ am.m='Bart-beta';live(am);let p='';
  try{await tryChain(await chain('text'),[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
  p=p||t;
  for(let i=0;i<4;i++){const u=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
@@ -66,7 +66,7 @@ async function draw(am,t,sig){
   await new Promise(r=>setTimeout(r,8000))}
  throw new Error('Генератор картинок не ответил (лимит — 1 запрос в 15 секунд). Повторите через минуту.')}
 const CODE_RE=/код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
-const SYS='Ты — Барт, универсальный ИИ-ассистент. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка; для нескольких файлов давай отдельный блок на каждый, перед ним название файла.';
+const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка; для нескольких файлов давай отдельный блок на каждый, перед ним название файла.';
 function build(hist){
  const li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true);
  return [{role:'system',content:SYS},...hist.slice(-12).map((m,j,arr)=>{const i=hist.length-arr.length+j;
@@ -104,7 +104,8 @@ async function send(){
  c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
  try{await run(c,am)}catch(e){if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
- finally{S.busy=false;$('#go').innerHTML=ic('send');c.updated=Date.now();renderMsgs();db.save(c).catch(e=>alert('Не сохранилось: '+e.message))}}
+ finally{S.busy=false;$('#go').innerHTML=ic('send');c.updated=Date.now();renderMsgs();db.save(c).catch(e=>{console.error(e);toast(e.code=='permission-denied'?'Чат не сохранился в облаке: в Firebase не опубликованы правила Firestore (см. README). Пока он виден только на этом устройстве.':'Не сохранилось: '+e.message)})}}
+let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,9000)};
 const grow=()=>{const i=$('#inp');i.style.height='auto';i.style.height=Math.min(i.scrollHeight,180)+'px'};
 $('#inp').oninput=grow;$('#go').onclick=send;
 $('#inp').onkeydown=e=>{if(e.key=='Enter'&&!e.shiftKey&&!matchMedia('(pointer:coarse)').matches){e.preventDefault();send()}};
