@@ -1,0 +1,21 @@
+name: Fetch icons
+on: { workflow_dispatch: {} }
+permissions: { contents: write }
+jobs:
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download icons from icons.txt
+        run: |
+          mkdir -p assets/icons
+          while read -r n u; do
+            [ -z "$n" ] && continue
+            curl -sSL --retry 3 -m 40 -o "assets/icons/$n.png" "$u" || true
+            [ "$(stat -c%s "assets/icons/$n.png" 2>/dev/null || echo 0)" -gt 200 ] || rm -f "assets/icons/$n.png"
+          done < icons.txt
+          echo "downloaded: $(ls assets/icons/*.png 2>/dev/null | wc -l)"
+      - name: Commit
+        run: |
+          git config user.name github-actions && git config user.email actions@github.com
+          git add assets && (git commit -m "Add icons" && git push) || echo "nothing to commit"
