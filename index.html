@@ -1,90 +1,112 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Bart — веб‑ассистент</title>
-  <link rel="stylesheet" href="css/style.css">
-  <script type="module" src="js/app.js" defer></script>
-</head>
-<body>
-  <!-- ==== HEADER ==== -->
-  <header class="brand">
-    <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="logo">
-    <span>Bart</span>
-    <button id="menuBtn" class="ic" data-ic="menu"></button>
-  </header>
+:root{--cv:#eef0f3;--pn:#fff;--pn2:#f3f4f6;--t:#16181d;--m:#6b7280;--b:#dfe2e8;--a:#2f5f8f;--ah:#264d75;--on:#fff;--icf:brightness(0);--sh:0 1px 2px #0000000a}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){--cv:#0f1115;--pn:#171a20;--pn2:#1f232b;--t:#e8eaed;--m:#9aa1ad;--b:#2a2f38;--a:#6f9fcb;--ah:#86b1d8;--on:#0f1115;--icf:brightness(0) invert(1);--sh:0 1px 2px #0006}}
+:root[data-theme=dark]{--cv:#0f1115;--pn:#171a20;--pn2:#1f232b;--t:#e8eaed;--m:#9aa1ad;--b:#2a2f38;--a:#6f9fcb;--ah:#86b1d8;--on:#0f1115;--icf:brightness(0) invert(1);--sh:0 1px 2px #0006}
+*{box-sizing:border-box;margin:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{background:var(--cv);color:var(--t);font:15px/1.65 "Segoe UI Variable","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;overflow:hidden}
+[hidden]{display:none!important}
+button,input,textarea{font:inherit;color:inherit}
+h1,h2,.brand{font-weight:700;letter-spacing:-.025em}
+.mono,.meta,.pill{font-family:ui-monospace,"Cascadia Code",Consolas,Menlo,monospace}
+.ic{display:inline-flex;width:20px;height:20px;align-items:center;justify-content:center;flex:none;color:var(--m)}
+.ic svg,.ic img{width:100%;height:100%;object-fit:contain}.ic img{filter:var(--icf);opacity:.7}
+.screen{height:100dvh;display:grid;place-items:center;padding:16px;overflow:auto}
+.card{width:100%;max-width:390px;background:var(--pn);border:1px solid var(--b);border-radius:20px;padding:30px 26px;text-align:center;box-shadow:var(--sh)}
+.card .logo{width:72px;height:72px;object-fit:contain}
+.card h1{font-size:26px;margin-top:8px}
+.sub{color:var(--m);margin:6px 0 20px;font-size:14px}
+.tabs{display:grid;grid-template-columns:1fr 1fr;background:var(--pn2);border-radius:12px;padding:4px;margin-bottom:16px}
+.tabs button{border:0;background:none;padding:8px;cursor:pointer;color:var(--m);border-radius:9px}
+.tabs .on{background:var(--pn);color:var(--t);box-shadow:var(--sh);font-weight:600}
+form{display:grid;gap:10px}
+input,textarea{background:var(--pn2);border:1.5px solid transparent;border-radius:12px;padding:11px 14px;outline:none;width:100%}
+input:focus{border-color:var(--a);background:var(--pn)}
+.row{display:flex;gap:10px}.row .btn{flex:1}
+.btn{border:0;border-radius:12px;padding:11px 16px;background:var(--a);color:var(--on);font-weight:600;cursor:pointer;display:flex;gap:8px;align-items:center;justify-content:center}
+.btn:hover{background:var(--ah)}
+.btn.alt{background:var(--pn2);color:var(--t)}.btn.alt:hover{background:var(--b)}
+.card .btn{width:100%}.card .row{margin-top:10px}
+#reset{color:var(--m);font-size:13px;cursor:pointer;text-decoration:underline}
+.err{color:#d6336c;font-size:13px;min-height:18px;margin-top:10px}
+#app{display:flex;height:100dvh;padding:12px;gap:12px}
+#side{width:276px;flex:none;background:var(--pn);border:1px solid var(--b);border-radius:22px;display:flex;flex-direction:column;gap:8px;padding:14px;box-shadow:var(--sh)}
+.brand{display:flex;align-items:center;gap:10px;font-size:22px;padding:2px 4px 8px}.brand img{width:34px;height:34px;object-fit:contain}
+#new{background:var(--pn2);color:var(--t);justify-content:flex-start;padding:10px 12px}#new:hover{background:var(--b)}#new .ic{color:var(--t)}
+.srch{position:relative}.srch .ic{position:absolute;left:11px;top:10px;width:17px;height:17px}.srch input{padding:8px 12px 8px 34px;font-size:14px}
+#list{flex:1;overflow:auto;display:grid;gap:2px;align-content:start;margin-top:4px}
+.ci{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;border-radius:10px;cursor:pointer;font-size:14px;color:var(--m);}
+.ci span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ci:hover{background:var(--pn2)}
+/* ---------- NEW: RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  #side{display:none;}
+  #menuBtn{display:inline-flex;}
+  #app{flex-direction:column;}
+}
+@media (min-width: 769px) {
+  #menuBtn{display:none;}
+}
 
-  <!-- ==== MAIN ==== -->
-  <div id="app">
-    <!-- SIDE (скрывается на <768px) -->
-    <aside id="side">
-      <button id="new" class="row btn">
-        <i class="ic" data-i="plus"></i> Новый чат
-      </button>
-      <div class="srch">
-        <i class="ic" data-i="search"></i>
-        <input type="text" placeholder="Поиск чатов..." id="search">
-      </div>
-      <div id="list"></div>
-    </aside>
+/* ---------- NEW: GALLERY ---------- */
+.gallery{
+  display:grid;
+  gap:6px;
+  grid-template-columns:repeat(auto-fill, minmax(80px,1fr));
+  margin:8px 0;
+}
+.gallery-item{
+  position:relative;
+  width:100%;
+  padding-top:100%; /* квадрат */
+  overflow:hidden;
+  border-radius:8px;
+  background:var(--pn2);
+}
+.gallery-item img,
+.gallery-item .file-icon{
+  position:absolute;
+  top:0;left:0;right:0;bottom:0;
+  width:100%;height:100%;
+  object-fit:cover;
+}
+.gallery-item .file-icon{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:24px;
+  color:var(--m);
+}
+.gallery-item .remove{
+  position:absolute;
+  top:4px;right:4px;
+  background:rgba(0,0,0,0.5);
+  border-radius:50%;
+  width:20px;height:20px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+}
 
-    <!-- CHAT -->
-    <section id="chat" class="screen">
-      <!-- AUTH (показывается только если пользователь не авторизован) -->
-      <div id="auth" class="card">
-        <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" class="logo" alt="logo">
-        <h1>Добро пожаловать</h1>
-        <div class="tabs">
-          <button id="tabLogin" class="on">Вход</button>
-          <button id="tabRegister">Регистрация</button>
-        </div>
-
-        <!-- Вход -->
-        <form id="loginForm">
-          <input type="email" id="loginEmail" placeholder="Email" required>
-          <input type="password" id="loginPass" placeholder="Пароль" required>
-          <button class="btn" type="submit">Войти</button>
-        </form>
-
-        <!-- Регистрация -->
-        <form id="registerForm" hidden>
-          <input type="email" id="regEmail" placeholder="Email" required>
-          <input type="password" id="regPass" placeholder="Пароль (мин. 6 символов)" required>
-          <button class="btn" type="submit">Создать аккаунт</button>
-        </form>
-
-        <div class="row">
-          <button id="googleSignIn" class="btn alt">
-            <i class="ic" data-i="google"></i> Войти через Google
-          </button>
-        </div>
-
-        <div class="err" id="authError"></div>
-      </div>
-
-      <!-- Основной чат (скрыт до авторизации) -->
-      <div id="chatContainer" hidden class="flex-col">
-        <div id="messages" class="flex-1 overflow-auto"></div>
-
-        <!-- Галерея вложений -->
-        <div id="gallery" class="gallery"></div>
-
-        <!-- INPUT -->
-        <form id="msgForm" class="row">
-          <textarea id="msgInput" placeholder="Введите сообщение…" rows="1"></textarea>
-          <button id="attachBtn" type="button" class="ic" data-ic="attachFile"></button>
-          <button id="sendBtn" type="submit" class="ic" data-ic="send"></button>
-        </form>
-        <input type="file" id="fileInput" multiple hidden>
-      </div>
-    </section>
-  </div>
-
-  <!-- MODAL (для просмотра изображений) -->
-  <div id="modal" hidden class="modal">
-    <img id="modalImg" src="" alt="">
-    <button id="modalClose" class="ic" data-ic="close"></button>
-  </div>
-</body>
-</html>
+/* ---------- NEW: MODAL ---------- */
+.modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.8);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:1000;
+}
+.modal img{
+  max-width:90%;
+  max-height:90%;
+  border-radius:12px;
+}
+.modal .ic{
+  position:absolute;
+  top:20px;
+  right:20px;
+  background:var(--pn);
+  border-radius:50%;
+}
