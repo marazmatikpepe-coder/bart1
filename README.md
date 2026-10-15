@@ -47,3 +47,24 @@ SambaNova не используется: её API блокирует запро�
 
 ## Безопасность ключей
 Ключи в `js/config.js` видны любому, кто откроет сайт. Для публичного сайта их стоит заменить на ключи с лимитами или вынести на свой прокси.
+
+
+## ModelScope: DeepSeek-V4 and Qwen-Image
+
+The frontend is static GitHub Pages, so **do not put the ModelScope token in `js/config.js`**. A browser-side token would be visible to every visitor. Use the included Cloudflare Worker proxy:
+
+1. Create a Cloudflare Worker and paste `worker/model-scope-worker.js` into it.
+2. In Worker Settings → Variables and Secrets, add a secret named `MODELSCOPE_TOKEN` with your ModelScope token.
+3. Deploy the Worker. Copy its HTTPS URL.
+4. In both `js/config.js` (the active config) set `modelApi: "https://YOUR-WORKER.workers.dev"`. Keep the URL without a trailing slash. Commit and push.
+5. The Worker uses `deepseek-ai/DeepSeek-V4.1-Flash` for chat/code and `Qwen/Qwen-Image` for image generation. Model availability depends on the ModelScope account/API inference access.
+
+The Worker allows CORS for the static frontend. For a public deployment, restrict `Access-Control-Allow-Origin` to your GitHub Pages origin and add basic rate limiting before sharing widely. Never commit the token itself.
+
+### What the file reader currently understands
+
+Images; PDF; DOCX and approximate legacy DOC; XLS/XLSX/XLSM/ODS; PPTX; ODT; EPUB; ZIP file lists and text/code files inside archives; RTF; HTML; Jupyter notebooks; and plain text/source-code formats. Binary files outside these supported readers can still be attached, but the assistant receives the file name/type rather than a guaranteed full extraction. A chat attachment card is a visual record; original non-image file bytes are not uploaded to a download service.
+
+### Request and context stability
+
+The frontend now limits chat history to recent turns and caps extracted file text before sending. A 429 from ModelScope still means a provider-side rate limit and should be retried after a pause. The API token is only used by the Worker, never by client JavaScript.
