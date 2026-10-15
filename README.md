@@ -51,20 +51,12 @@ SambaNova не используется: её API блокирует запро�
 
 ## ModelScope: DeepSeek-V4 and Qwen-Image
 
-The frontend is static GitHub Pages, so **do not put the ModelScope token in `js/config.js`**. A browser-side token would be visible to every visitor. Use the included Cloudflare Worker proxy:
+Для максимально простого запуска GitHub Pages фронтенд напрямую вызывает ModelScope API. В `js/config.js` указан токен проекта. **Любой токен, включённый в клиентский JavaScript, публичен**: любой посетитель может его посмотреть и использовать. Этот режим подходит только для отдельного тестового токена с ограниченными правами/лимитами. Для публичного сервиса лучше перейти на серверный прокси.
 
-1. Create a Cloudflare Worker and paste `worker/model-scope-worker.js` into it.
-2. In Worker Settings → Variables and Secrets, add a secret named `MODELSCOPE_TOKEN` with your ModelScope token.
-3. Deploy the Worker. Copy its HTTPS URL.
-4. In both `js/config.js` (the active config) set `modelApi: "https://YOUR-WORKER.workers.dev"`. Keep the URL without a trailing slash. Commit and push.
-5. The Worker uses `deepseek-ai/DeepSeek-V4.1-Flash` for chat/code and `Qwen/Qwen-Image` for image generation. Model availability depends on the ModelScope account/API inference access.
+Чат и код используют `deepseek-ai/DeepSeek-V4.1-Flash`; генерация изображений использует `Qwen/Qwen-Image`. Наличие модели в каталоге не гарантирует доступность inference для каждого аккаунта. При ошибке 401/403 проверьте токен и права доступа; 429 означает ограничение провайдера.
 
-The Worker allows CORS for the static frontend. For a public deployment, restrict `Access-Control-Allow-Origin` to your GitHub Pages origin and add basic rate limiting before sharing widely. Never commit the token itself.
+## Быстрый запуск GitHub Pages (без Worker)
 
-### What the file reader currently understands
+Этот вариант вызывает ModelScope напрямую из браузера, поэтому не требует отдельного сервера или настройки другого хостинга. Токен находится в `js/config.js` и **будет виден каждому посетителю публичного сайта**. Используйте только специально выделенный ограниченный токен и отзовите его, если появятся неожиданные запросы. Для настоящего публичного сервиса безопаснее использовать серверный прокси.
 
-Images; PDF; DOCX and approximate legacy DOC; XLS/XLSX/XLSM/ODS; PPTX; ODT; EPUB; ZIP file lists and text/code files inside archives; RTF; HTML; Jupyter notebooks; and plain text/source-code formats. Binary files outside these supported readers can still be attached, but the assistant receives the file name/type rather than a guaranteed full extraction. A chat attachment card is a visual record; original non-image file bytes are not uploaded to a download service.
-
-### Request and context stability
-
-The frontend now limits chat history to recent turns and caps extracted file text before sending. A 429 from ModelScope still means a provider-side rate limit and should be retried after a pause. The API token is only used by the Worker, never by client JavaScript.
+Загрузите содержимое папки проекта в корень репозитория GitHub и включите Settings → Pages → Deploy from a branch → `main` / `/ (root)`. Файлы скачиваются по нажатию на карточку на том же браузере/устройстве, где они были прикреплены; для передачи оригиналов между устройствами потребуется облачное хранилище.
