@@ -94,7 +94,7 @@ async function run(c,am){
 function renderList(list){CH=list;const q=$('#q').value.toLowerCase();
  $('#list').innerHTML=list.filter(c=>c.title.toLowerCase().includes(q)).map(c=>`<div class="ci ${S.chat?.id==c.id?'on':''}" data-id="${c.id}"><span>${esc(c.title)}</span><button data-del="${c.id}">${ic('delete')}</button></div>`).join('')}
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
- $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?`<div class="m u"><div class="b">${(m.a||[]).map(a=>a.k=='img'?`<img class="th" src="${esc(a.u||DATA.get(a)||'')}">`:`<span class="chip">${ic('attachFile')} ${esc(a.n)}</span>`).join('')}${esc(m.t)}</div></div>`
+ $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?`<div class="m u"><div class="b">${(()=>{const imgs=(m.a||[]).filter(a=>a.k=='img'),other=(m.a||[]).filter(a=>a.k!='img');return `${imgs.length?`<div class="media-album count-${Math.min(imgs.length,4)}">${imgs.slice(0,4).map((a,j)=>`<a class="album-item" href="${esc(a.u||DATA.get(a)||'#')}" target="_blank" rel="noopener" aria-label="Открыть изображение ${j+1}"><img src="${esc(a.u||DATA.get(a)||'')}" loading="lazy" alt="${esc(a.n||'Изображение')}">${imgs.length>4&&j==3?`<span class="album-more">+${imgs.length-4}</span>`:''}</a>`).join('')}</div>`:''}${other.map(a=>`<span class="chip">${ic('attachFile')} ${esc(a.n)}</span>`).join('')}`})()}${esc(m.t)}</div></div>`
   :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
  $('#msgs').scrollTop=1e9;renderList(CH)}
 let raf=0;function live(am){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e)return;$('.md',e).innerHTML=md(am.t)||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9})}
@@ -130,7 +130,7 @@ $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 /* ---------- файлы и картинки ---------- */
 function chips(){$('#chips').innerHTML=S.files.map((f,i)=>`<span class="chip ${f.err?'bad':''}">${ic('attachFile')} ${esc(f.n)} ${f.err?'— '+esc(f.err):f.ok?'':'…'} <b data-r="${i}">✕</b></span>`).join('')}
 $('#chips').onclick=e=>{const r=e.target.dataset.r;if(r!=null){S.files.splice(r,1);chips()}};
-const shrink=async f=>{const b=await createImageBitmap(f),k=Math.min(1,1600/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=b.width*k;c.height=b.height*k;c.getContext('2d').drawImage(b,0,0,c.width,c.height);return c.toDataURL('image/jpeg',.85)};
+const shrink=async f=>{const b=await createImageBitmap(f),k=Math.min(1,1440/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(b.width*k));c.height=Math.max(1,Math.round(b.height*k));const x=c.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(b,0,0,c.width,c.height);b.close?.();return c.toDataURL('image/jpeg',.68)};
 async function up(d){const fd=new FormData();fd.append('image',d.split(',')[1]);const j=await(await fetch('https://api.imgbb.com/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(!j.data)throw 0;return j.data.url}
 const JSZ=CDN+'jszip/3.10.1/jszip.min.js',XLS=CDN+'xlsx/0.18.5/xlsx.full.min.js';
 const ent=x=>x.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
@@ -177,38 +177,22 @@ $('#mic').onclick=mic;
 $('#clip').onclick=()=>$('#fi').click();$('#cam').onclick=()=>$('#ci').click();
 $('#fi').onchange=$('#ci').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
 $('#inp').onpaste=e=>{const f=[...e.clipboardData.files];if(f.length){e.preventDefault();addFiles(f)}};
-addEventListener('dragover',e=>e.preventDefault());addEventListener('drop',e=>{e.preventDefault();addFiles([...e.dataTransfer.files])});
+let dragDepth=0;addEventListener('dragenter',e=>{if(!e.dataTransfer?.types?.includes('Files'))return;e.preventDefault();dragDepth++;document.body.classList.add('file-drag')});addEventListener('dragover',e=>{if(e.dataTransfer?.types?.includes('Files'))e.preventDefault()});addEventListener('dragleave',e=>{if(!e.dataTransfer?.types?.includes('Files'))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)document.body.classList.remove('file-drag')});addEventListener('drop',e=>{if(!e.dataTransfer?.files?.length)return;e.preventDefault();dragDepth=0;document.body.classList.remove('file-drag');addFiles([...e.dataTransfer.files])});
 
 $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme,d=t?t=='dark':matchMedia('(prefers-color-scheme:dark)').matches,n=d?'light':'dark';document.documentElement.dataset.theme=n;localStorage.bart_theme=n};
-/* ---------- вход: Firebase Auth (почта + телефон) ---------- */
+/* ---------- вход: Firebase Auth (почта и Google) ---------- */
 const show=n=>['auth','verify','app'].forEach(s=>$('#'+s).hidden=s!=n);
-const ER={'auth/invalid-credential':'Неверная почта или пароль','auth/email-already-in-use':'Эта почта уже зарегистрирована','auth/weak-password':'Пароль слишком короткий (от 6 символов)','auth/invalid-phone-number':'Неверный номер, формат: +79991234567','auth/invalid-verification-code':'Неверный код','auth/too-many-requests':'Слишком много попыток, подождите','auth/missing-password':'Введите пароль','auth/operation-not-allowed':'Этот способ входа не включён в Firebase'};
-const er=e=>ER[e.code]||e.message,fail=(m,id='err')=>$('#'+id).textContent=m;
-async function enter(u){
- uid=u?u.uid:'local';fs=u?{...fb.f,db:fb.db}:null;S.chat=null;unl?.();show('app');
- $('#who').textContent=u?(u.email||u.phoneNumber):'Локальный режим';$('#out').hidden=!u;$('#dev').textContent=u?'':'данные только на этом устройстве';
- unl=db.list(l=>{renderList(l);if(!S.busy&&!S.chat)renderMsgs()});renderMsgs();
- if(u){const did=localStorage.bart_dev||(localStorage.bart_dev=Math.random().toString(36).slice(2,8)),R=fb.d,pr=R.ref(fb.rt,`presence/${uid}/${did}`);
-  R.set(pr,{ua:navigator.userAgent.slice(0,60),t:Date.now()});R.onDisconnect(pr).remove();
-  R.onValue(R.ref(fb.rt,`presence/${uid}`),s=>$('#dev').textContent='☁ синхронизация · онлайн: '+Object.keys(s.val()||{}).length)}}
-let vt;
-async function boot(){
- if(FB.apiKey.startsWith('PASTE')){return enter(null)}
- const m=await Promise.all(['app','auth','firestore','database'].map(n=>import(`${G}firebase-${n}.js`)));
- const app=m[0].initializeApp(FB);fb={au:m[1],f:m[2],d:m[3],auth:m[1].getAuth(app),db:m[2].getFirestore(app),rt:m[3].getDatabase(app)};const A=fb.au;
- A.onAuthStateChanged(fb.auth,u=>{clearInterval(vt);if(!u){unl?.();show('auth');return}
-  if(u.email&&!u.emailVerified){$('#vem').textContent=u.email;show('verify');vt=setInterval(async()=>{await u.reload();if(u.emailVerified){clearInterval(vt);enter(u)}},4000);return}
-  enter(u)});
- $$('.tabs button').forEach(b=>b.onclick=()=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x==b));$('#f-email').hidden=b.dataset.tab!='email';$('#f-phone').hidden=b.dataset.tab!='phone';fail('')});
- $('#f-email').onsubmit=async e=>{e.preventDefault();fail('');try{await A.signInWithEmailAndPassword(fb.auth,$('#em').value.trim(),$('#pw').value)}catch(x){fail(er(x))}};
- $('#reg').onclick=async()=>{fail('');try{const r=await A.createUserWithEmailAndPassword(fb.auth,$('#em').value.trim(),$('#pw').value);await A.sendEmailVerification(r.user)}catch(x){fail(er(x))}};
- $('#reset').onclick=async()=>{try{await A.sendPasswordResetEmail(fb.auth,$('#em').value.trim());fail('Письмо для сброса отправлено')}catch(x){fail(er(x))}};
- let conf,rv;$('#f-phone').onsubmit=async e=>{e.preventDefault();fail('');try{
-  if(!conf){rv??=new A.RecaptchaVerifier(fb.auth,'recaptcha',{size:'invisible'});conf=await A.signInWithPhoneNumber(fb.auth,$('#ph').value.replace(/[\s()-]/g,''),rv);$('#cd').hidden=false;$('#phb').textContent='Подтвердить';$('#cd').focus()}
-  else await conf.confirm($('#cd').value.trim())}catch(x){fail(er(x));if(!conf){rv?.clear();rv=null}}};
- $('#vok').onclick=async()=>{const u=fb.auth.currentUser;await u.reload();u.emailVerified?enter(u):fail('Почта ещё не подтверждена','verr')};
- $('#vre').onclick=async()=>{try{await A.sendEmailVerification(fb.auth.currentUser);fail('Письмо отправлено','verr')}catch(x){fail(er(x),'verr')}};
- $('#vout').onclick=$('#out').onclick=()=>A.signOut(fb.auth);}
+const ER={'auth/invalid-credential':'Неверная почта или пароль','auth/email-already-in-use':'Эта почта уже зарегистрирована','auth/weak-password':'Пароль должен содержать не менее 6 символов','auth/too-many-requests':'Слишком много попыток. Подожди немного и попробуй снова','auth/missing-password':'Введите пароль','auth/operation-not-allowed':'Этот способ входа не включён в Firebase','auth/popup-closed-by-user':'Окно входа Google закрыто до завершения','auth/popup-blocked':'Браузер заблокировал окно Google. Разреши всплывающие окна для сайта','auth/unauthorized-domain':'Домен сайта не добавлен в Firebase: Authentication → Settings → Authorized domains','auth/network-request-failed':'Не удалось подключиться к Firebase. Проверь интернет или отключи блокировщик для сайта','auth/invalid-email':'Проверь адрес электронной почты'};
+const er=e=>ER[e.code]||e.message||'Неизвестная ошибка',fail=(m,id='err')=>$('#'+id).textContent=m;
+let authMode='login';function setAuthMode(mode){authMode=mode;$$('[data-auth-mode]').forEach(b=>b.classList.toggle('on',b.dataset.authMode===mode));$('#auth-submit').textContent=mode==='login'?'Войти':'Создать аккаунт';$('#pw').autocomplete=mode==='login'?'current-password':'new-password';$('#reset').hidden=mode!=='login';fail('')}
+$$('[data-auth-mode]').forEach(b=>b.onclick=()=>setAuthMode(b.dataset.authMode));
+async function enter(u){uid=u?u.uid:'local';fs=u?{...fb.f,db:fb.db}:null;S.chat=null;unl?.();show('app');$('#who').textContent=u?(u.email||u.displayName||'Аккаунт Google'):'Локальный режим';$('#out').hidden=!u;$('#dev').textContent=u?'':'данные только на этом устройстве';unl=db.list(l=>{renderList(l);if(!S.busy&&!S.chat)renderMsgs()});renderMsgs();if(u){const did=localStorage.bart_dev||(localStorage.bart_dev=Math.random().toString(36).slice(2,8)),R=fb.d,pr=R.ref(fb.rt,`presence/${uid}/${did}`);R.set(pr,{ua:navigator.userAgent.slice(0,60),t:Date.now()});R.onDisconnect(pr).remove();R.onValue(R.ref(fb.rt,`presence/${uid}`),s=>$('#dev').textContent='☁ синхронизация · онлайн: '+Object.keys(s.val()||{}).length)}}
+let vt;async function boot(){if(FB.apiKey.startsWith('PASTE'))return enter(null);const m=await Promise.all(['app','auth','firestore','database'].map(n=>import(`${G}firebase-${n}.js`)));const app=m[0].initializeApp(FB);fb={au:m[1],f:m[2],d:m[3],auth:m[1].getAuth(app),db:m[2].getFirestore(app),rt:m[3].getDatabase(app)};const A=fb.au;
+ A.onAuthStateChanged(fb.auth,u=>{clearInterval(vt);if(!u){unl?.();show('auth');return}if(u.email&&!u.emailVerified&&!u.providerData.some(p=>p.providerId==='google.com')){$('#vem').textContent=u.email;show('verify');vt=setInterval(async()=>{try{await u.reload();if(u.emailVerified){clearInterval(vt);enter(u)}}catch(e){}},4000);return}enter(u)});
+ $('#f-email').onsubmit=async e=>{e.preventDefault();fail('');const email=$('#em').value.trim(),password=$('#pw').value;if(password.length<6){fail('Пароль должен содержать не менее 6 символов');return}const submit=$('#auth-submit');submit.disabled=true;submit.textContent='Подождите…';try{if(authMode==='login')await A.signInWithEmailAndPassword(fb.auth,email,password);else{const r=await A.createUserWithEmailAndPassword(fb.auth,email,password);await A.sendEmailVerification(r.user)}}catch(x){fail(er(x))}finally{submit.disabled=false;submit.textContent=authMode==='login'?'Войти':'Создать аккаунт'}};
+ $('#google').onclick=async()=>{fail('');const b=$('#google');b.disabled=true;try{const provider=new A.GoogleAuthProvider();if(matchMedia('(pointer: coarse)').matches)await A.signInWithRedirect(fb.auth,provider);else await A.signInWithPopup(fb.auth,provider)}catch(x){fail(er(x));b.disabled=false}};A.getRedirectResult(fb.auth).catch(x=>fail(er(x)));
+ $('#reset').onclick=async()=>{const email=$('#em').value.trim();if(!email){fail('Сначала введи свою почту');$('#em').focus();return}try{await A.sendPasswordResetEmail(fb.auth,email);fail('Ссылка для сброса пароля отправлена на почту')}catch(x){fail(er(x))}};
+ $('#vok').onclick=async()=>{try{const u=fb.auth.currentUser;await u.reload();u.emailVerified?enter(u):fail('Почта ещё не подтверждена','verr')}catch(x){fail(er(x),'verr')}};$('#vre').onclick=async()=>{try{await A.sendEmailVerification(fb.auth.currentUser);fail('Письмо отправлено','verr')}catch(x){fail(er(x),'verr')}};$('#vout').onclick=$('#out').onclick=()=>A.signOut(fb.auth)}
 boot().catch(e=>{console.error(e);alert('Firebase не запустился: '+e.message+'\nРежим без аккаунта.');enter(null)});
 
 hyd(document);

@@ -13,26 +13,16 @@
 <body>
 
 <section id="auth" class="screen" hidden>
-  <div class="card">
+  <div class="card auth-card">
     <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart">
-    <h1>Bart</h1><p class="sub">ИИ-ассистент: текст, код, фото, файлы, картинки</p>
-    <div class="tabs"><button data-tab="email" class="on">Почта</button><button data-tab="phone">Телефон</button></div>
-    <form id="f-email">
-      <input id="em" type="email" placeholder="Почта" autocomplete="email" required>
-      <input id="pw" type="password" placeholder="Пароль (от 6 символов)" autocomplete="current-password">
-      <div class="row"><button class="btn" type="submit">Войти</button><button class="btn alt" type="button" id="reg">Регистрация</button></div>
-      <a id="reset">Забыли пароль?</a>
-    </form>
-    <form id="f-phone" hidden>
-      <input id="ph" type="tel" placeholder="+7 999 123-45-67" autocomplete="tel">
-      <input id="cd" type="text" inputmode="numeric" placeholder="Код из SMS" hidden>
-      <button class="btn" type="submit" id="phb">Получить код</button>
-    </form>
-    <div id="recaptcha"></div>
-    <p id="err" class="err"></p>
+    <h1>Bart</h1><p class="sub">Твой ИИ-помощник для текста, кода и файлов</p>
+    <div class="auth-switch" role="tablist" aria-label="Аккаунт"><button type="button" data-auth-mode="login" class="on">Войти</button><button type="button" data-auth-mode="register">Создать аккаунт</button></div>
+    <button class="btn google-btn" type="button" id="google"><span class="google-g">G</span> Продолжить с Google</button>
+    <div class="auth-divider"><span>или через почту</span></div>
+    <form id="f-email"><label for="em">Электронная почта</label><input id="em" type="email" placeholder="you@example.com" autocomplete="email" required><label for="pw">Пароль</label><input id="pw" type="password" placeholder="Не менее 6 символов" autocomplete="current-password" minlength="6" required><button class="btn" type="submit" id="auth-submit">Войти</button><button class="text-btn" type="button" id="reset">Забыли пароль?</button></form>
+    <div id="recaptcha"></div><p id="err" class="err" role="alert"></p><p class="auth-legal">Продолжая, вы используете аккаунт для синхронизации чатов.</p>
   </div>
 </section>
-
 <section id="verify" class="screen" hidden>
   <div class="card">
     <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">

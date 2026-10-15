@@ -9,8 +9,8 @@
 
 ## Firebase (аккаунты и синхронизация)
 1. Project settings → Your apps → Web (`</>`) → скопируйте `firebaseConfig` в `js/firebase-config.js`.
-2. Authentication → Sign-in method: включите **Email/Password** и **Phone**.
-3. Authentication → Settings → Authorized domains: добавьте `ИМЯ.github.io`.
+2. Authentication → Sign-in method: включите **Email/Password** и **Google** (для Google выберите адрес поддержки проекта). Вход по номеру телефона не используется.
+3. Authentication → Settings → Authorized domains: добавьте домен GitHub Pages (`ИМЯ.github.io`) и домен, на котором реально размещён сайт.
 4. Firestore Database → Rules:
 ```
 rules_version = '2';
@@ -22,8 +22,7 @@ service cloud.firestore { match /databases/{d}/documents {
 ```
 { "rules": { "presence": { "$uid": { ".read": "auth != null && auth.uid == $uid", ".write": "auth != null && auth.uid == $uid" } } } }
 ```
-Почта: Firebase шлёт **ссылку** подтверждения (не код); текст письма меняется в Authentication → Templates.
-Телефон: SMS-код; для проверки без SMS добавьте тестовые номера в Authentication → Phone.
+Почта: Firebase шлёт **ссылку** подтверждения (не код); текст письма меняется в Authentication → Templates. На телефонах вход Google использует перенаправление, на компьютерах — всплывающее окно. Если вход не работает, проверьте Authorized domains и включённый Google provider.
 
 ## Как работают модели
 Сайт сам берёт актуальный список моделей из Groq и выбирает подходящую (названия не зашиты, устаревшие модели пропускаются):
