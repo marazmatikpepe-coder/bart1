@@ -3,8 +3,8 @@ import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
-const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq}};
-const MAX=12000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
+const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:9000,out:3000},ms:{url:'https://api-inference.modelscope.cn/v1',key:K.ms,budget:60000,out:8192}};
+const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
 /* реальная высота видимой области (клавиатура на телефоне не обрезает интерфейс) */
@@ -30,10 +30,14 @@ const EXT={javascript:'js',js:'js',python:'py',html:'html',css:'css',json:'json'
 const S={chat:null,files:[],busy:false};let uid='local',fs=null,fb={},CH=[],unl=null,unw=null,ctl=null;
 const DATA=new WeakMap();
 const L=()=>JSON.parse(localStorage.bart_chats||'{}');
+/* документ чата в Firestore ≤1 МБ: тексты файлов сохраняем сокращённо, при необходимости чистим самые старые */
+function compact(c){c=JSON.parse(JSON.stringify(c));const sz=()=>new TextEncoder().encode(JSON.stringify(c)).length;
+ c.msgs.forEach(m=>(m.a||[]).forEach(a=>{if(a.x&&a.x.length>3000)a.x=a.x.slice(0,3000)+'\n…[сохранено сокращённо]'}));
+ for(let i=0;sz()>850000&&i<c.msgs.length;i++){(c.msgs[i].a||[]).forEach(a=>a.x=null);if(c.msgs[i].t.length>1500)c.msgs[i].t=c.msgs[i].t.slice(0,1500)+'…'}return c}
 const db={
  list(cb){if(fs)return fs.onSnapshot(fs.query(fs.collection(fs.db,'users',uid,'chats'),fs.orderBy('updated','desc')),s=>cb(s.docs.map(d=>d.data())));
   db.cb=()=>cb(Object.values(L()).sort((a,b)=>b.updated-a.updated));db.cb();return()=>{}},
- async save(c){c=JSON.parse(JSON.stringify(c));if(fs)await fs.setDoc(fs.doc(fs.db,'users',uid,'chats',c.id),c);else{const l=L();l[c.id]=c;localStorage.bart_chats=JSON.stringify(l);db.cb?.()}},
+ async save(c){c=compact(c);if(fs)await fs.setDoc(fs.doc(fs.db,'users',uid,'chats',c.id),c);else{const l=L();l[c.id]=c;localStorage.bart_chats=JSON.stringify(l);db.cb?.()}},
  async del(id){if(fs)await fs.deleteDoc(fs.doc(fs.db,'users',uid,'chats',id));else{const l=L();delete l[id];localStorage.bart_chats=JSON.stringify(l);db.cb?.()}},
  watch(id,cb){return fs?fs.onSnapshot(fs.doc(fs.db,'users',uid,'chats',id),s=>s.exists()&&cb(s.data())):()=>{}}
 };
@@ -41,56 +45,94 @@ const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xx
 const newChat=()=>({id:uuid(),title:'Новый чат',updated:Date.now(),msgs:[]});
 function follow(c){unw?.();unw=db.watch(c.id,d=>{if(!S.busy&&S.chat?.id==d.id&&d.updated>S.chat.updated){S.chat=d;renderMsgs()}})}
 
-/* ---------- AI: роутер моделей ---------- */
-const mc={};
-async function ml(p){return mc[p]??=fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i))).catch(()=>[])}
-async function chain(kind){
- const g=await ml('groq'),o=[],add=(l,re,n=9)=>l.filter(m=>re.test(m)).slice(0,n).forEach(m=>o.push(m)),ver=m=>+(m.match(/qwen(\d+(?:\.\d+)?)/)?.[1]||0),vis=/qwen.*27b|vl|vision|maverick/i;
- if(kind=='vision'){add(g.filter(m=>vis.test(m)).sort((a,b)=>ver(b)-ver(a)),/./);o.push('qwen/qwen3.8-27b','qwen/qwen3.6-27b')}
- else{const t=g.filter(m=>!/vl|vision|maverick/i.test(m));for(const re of kind=='code'?[/coder/i,/gpt-oss-120b/i,/qwen.*27b|qwen3-32b/i,/llama-3\.3-70b/i]:[/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen.*27b|qwen3-32b/i])add(t,re,1);add(t,/./,2);o.push('openai/gpt-oss-120b','llama-3.3-70b-versatile')}
- return [...new Set(o)].filter(m=>!/scout/i.test(m)).map(m=>['groq',m])}
+/* ---------- AI: роутер моделей (Groq + ModelScope) ---------- */
+const mc={},dead=new Set(),cool={};
+const ml=p=>mc[p]??=!P[p].key?Promise.resolve([]):fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i))).catch(()=>[]);
+const sleep=(ms,sig)=>new Promise((r,j)=>{const t=setTimeout(r,ms);sig?.addEventListener('abort',()=>{clearTimeout(t);j(new DOMException('','AbortError'))})});
+const vnum=m=>+(m.match(/v(\d+(?:\.\d+)?)/i)?.[1]||0),qver=m=>+(m.match(/qwen(\d+(?:\.\d+)?)/i)?.[1]||0);
+async function chain(kind,prefMs){
+ const [g,s]=await Promise.all([ml('groq'),ml('ms')]),o=[],vis=/qwen.*27b|vl|vision|maverick/i,hasMs=!!P.ms.key;
+ if(kind=='vision'){
+  g.filter(m=>vis.test(m)).sort((a,b)=>qver(b)-qver(a)).forEach(m=>o.push(['groq',m]));o.push(['groq','qwen/qwen3.8-27b'],['groq','qwen/qwen3.6-27b']);
+  if(hasMs){const v=s.filter(m=>/qwen.*vl/i.test(m)).sort((a,b)=>qver(b)-qver(a)).slice(0,2);(v.length?v:['Qwen/Qwen3-VL-235B-A22B-Instruct']).forEach(m=>o.push(['ms',m]))}}
+ else{
+  const t=g.filter(m=>!/vl|vision|maverick/i.test(m)),gq=[];
+  for(const re of kind=='code'?[/coder/i,/gpt-oss-120b/i,/qwen.*27b|qwen3-32b/i,/llama-3\.3-70b/i]:[/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen.*27b|qwen3-32b/i])t.filter(m=>re.test(m)).slice(0,1).forEach(m=>gq.push(['groq',m]));
+  gq.push(['groq','openai/gpt-oss-120b'],['groq','llama-3.3-70b-versatile']);
+  /* DeepSeek на ModelScope: берём самую новую версию из списка (V4 → V3.2 → …) */
+  const ds=s.filter(m=>/^deepseek-ai\/deepseek-v\d/i.test(m)&&!/distill/i.test(m)).sort((a,b)=>vnum(b)-vnum(a)).slice(0,2),
+   mq=hasMs?(ds.length?ds:['deepseek-ai/DeepSeek-V4','deepseek-ai/DeepSeek-V3.2']).map(m=>['ms',m]):[];
+  o.push(...(kind=='code'||prefMs?[...mq,...gq]:[...gq,...mq]))}
+ const seen=new Set();return o.filter(([p,m])=>!/scout/i.test(m)&&!dead.has(m)&&!seen.has(p+m)&&seen.add(p+m))}
 async function stream(p,model,messages,onD,sig){
- const body={model,messages,stream:true,temperature:.6,max_tokens:4096};if(/gpt-oss/.test(model))body.reasoning_effort='medium';
- const r=await fetch(P[p].url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+P[p].key},body:JSON.stringify(body)});
- if(!r.ok)throw new Error(r.status+': '+(await r.text()).slice(0,200));
+ const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:c.out};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
+ const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key},body:JSON.stringify(body)});
+ if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;
+  e.wait=(+r.headers.get('retry-after')||0)*1000||(w?+w[1]*({ms:1,s:1000,m:60000}[w[2]]):0);throw e}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
  for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
   for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const d=JSON.parse(l.slice(5)).choices?.[0]?.delta?.content;if(d){got=true;onD(d)}}catch{}}}
  return got}
-async function tryChain(list,messages,onD,sig,label){const errs=[];
- for(const [p,m] of list){try{label('Bart-beta');if(await stream(p,m,messages,onD,sig))return;errs.push(m+': пустой ответ');console.warn('model empty',m)}catch(e){if(e.name=='AbortError')throw e;console.warn('model failed',m,e.message);errs.push(e.message.slice(0,3))}}
- throw new Error('Bart-beta сейчас не смог ответить (код '+(errs.join('/')||'—')+'). Попробуйте ещё раз; подробности в консоли (F12).')}
+const WHY={429:'лимит запросов',404:'модель недоступна',413:'слишком длинный запрос',401:'ключ не принят',403:'доступ запрещён',400:'запрос отклонён'};
+/* mk(провайдер, попытка) → сообщения; rs() — сброс частично пришедшего ответа перед новой моделью */
+async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
+ for(const [p,m] of list){const nm=m.split('/').pop();
+  if((cool[m]||0)>Date.now()){errs.push({t:nm+': пауза после лимита',st:429});continue}
+  for(let a=0;a<2;a++){
+   try{label('Bart-beta');rs();if(await stream(p,m,mk(p,a),onD,sig))return;errs.push({t:nm+': пустой ответ'});break}
+   catch(e){if(e.name=='AbortError')throw e;const st=e.status||0;console.warn('model failed',m,e.message);
+    if(st==429){if(a==0&&e.wait&&e.wait<=6000){await sleep(e.wait+250,sig);continue}cool[m]=Date.now()+Math.max(e.wait||0,20000)}
+    else if(st==404)dead.add(m);
+    else if((st==413||st==400)&&a==0&&/too large|context|token|length|limit/i.test(e.body||'')){continue}
+    errs.push({t:nm+': '+(WHY[st]||(st?'ошибка '+st:'нет связи'))+(st?' ('+st+')':''),st});break}}}
+ const has=n=>errs.some(e=>e.st==n);
+ throw new Error('Bart-beta сейчас не смог ответить — '+errs.map(e=>e.t).join('; ')+'. '+(has(413)||has(400)?'Чат стал слишком длинным — начните новый.':has(429)?'Это временный лимит у провайдера моделей: подождите около минуты и повторите.':'Попробуйте ещё раз; подробности в консоли (F12).'))}
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
+/* генерация картинок: ModelScope Qwen-Image (асинхронная задача), запасной вариант — Pollinations */
+async function msImage(prompt,sig){
+ const h={Authorization:'Bearer '+P.ms.key,'Content-Type':'application/json'};
+ const r=await fetch(P.ms.url+'/images/generations',{method:'POST',signal:sig,headers:{...h,'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt,size:'1024x1024'})});
+ if(!r.ok)throw new Error(r.status+': '+(await r.text()).slice(0,160));
+ const id=(await r.json()).task_id;if(!id)throw new Error('нет task_id');
+ for(let i=0;i<60;i++){await sleep(2000,sig);const t=await(await fetch(P.ms.url+'/tasks/'+id,{signal:sig,headers:{...h,'X-ModelScope-Task-Type':'image_generation'}})).json();
+  if(t.task_status=='SUCCEED'&&t.output_images?.[0])return t.output_images[0];if(t.task_status=='FAILED')throw new Error(t.errors?.message||'генерация не удалась')}
+ throw new Error('генерация заняла слишком много времени')}
 async function draw(am,t,sig){
  am.m='Bart-beta';live(am);let p='';
- try{await tryChain(await chain('text'),[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
- p=p||t;
- for(let i=0;i<4;i++){const u=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
-  if(await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=u})){am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
-   try{const b=await(await fetch(u)).blob(),d=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});am.img=await up(d)}catch{}
-   return}
-  await new Promise(r=>setTimeout(r,8000))}
- throw new Error('Генератор картинок не ответил (лимит — 1 запрос в 15 секунд). Повторите через минуту.')}
+ try{await tryChain(await chain('text'),()=>[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). If the image must contain written text, keep that text verbatim in quotes. Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{},()=>{p=''});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
+ p=p||t;let u=null;
+ if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed, fallback',e.message)}
+ if(!u){for(let i=0;i<4&&!u;i++){const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
+  if(await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))u=x;else await sleep(8000,sig)}
+  if(!u)throw new Error('Генераторы картинок сейчас не отвечают. Повторите через минуту.')}
+ am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
+ try{am.img=await up(await(await fetch(u)).blob())}catch{} }
 const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
 const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении.';
-function build(hist){
- const li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true);
- return [{role:'system',content:SYS},...hist.slice(-12).map((m,j,arr)=>{const i=hist.length-arr.length+j;
-  if(m.r!='user')return {role:'assistant',content:clean(m.t)||'…'};
-  let t=(m.t||'')+(m.a||[]).filter(a=>a.x).map(a=>`\n\n[Файл: ${a.n}]\n${a.x}`).join('');
-  const im=(m.a||[]).filter(a=>a.k=='img');
-  if(i==li&&im.length)return {role:'user',content:[{type:'text',text:t||'Опиши изображение.'},...im.slice(0,4).map(a=>({type:'image_url',image_url:{url:DATA.get(a)||a.u}}))]};
-  return {role:'user',content:t+im.map(a=>`\n[изображение: ${a.n}]`).join('')||'…'}})]}
+/* история под бюджет символов провайдера: свежее — полностью, старое — сокращённо, самое старое — отбрасывается */
+function build(hist,budget){
+ const n=hist.length,li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true),cap=(t,k)=>t.length>k?t.slice(0,k)+'\n…[сокращено]':t;
+ const items=hist.slice(-16).map((m,j,arr)=>{const i=n-arr.length+j,last=i==n-1;
+  if(m.r!='user')return {role:'assistant',content:cap(clean(m.t),last?budget:2000)||'…'};
+  const fs_=(m.a||[]).filter(a=>a.x);
+  let t=(m.t||'')+fs_.map(a=>`\n\n[Файл: ${a.n}]\n`+(last?cap(a.x,Math.floor(budget*.7/fs_.length)):n-i<=3?cap(a.x,1500):'[содержимое опущено — файл был выше в чате]')).join('');
+  t=cap(t,last?budget:3000);const im=(m.a||[]).filter(a=>a.k=='img');
+  if(i==li&&li==n-1&&im.length)return {role:'user',content:[{type:'text',text:t||'Опиши изображение.'},...im.slice(0,4).map(a=>({type:'image_url',image_url:{url:DATA.get(a)||a.u}}))]};
+  return {role:'user',content:t+im.map(a=>`\n[изображение: ${a.n}]`).join('')||'…'}});
+ const len=m=>typeof m.content=='string'?m.content.length:(m.content[0].text||'').length+800;
+ let tot=0,k=items.length;while(k>0&&(tot+=len(items[k-1]))<=budget)k--;if(k==items.length)k=items.length-1;
+ let kept=items.slice(k);while(kept.length>1&&kept[0].role!='user')kept.shift();
+ return [{role:'system',content:SYS},...kept]}
 async function run(c,am){
  const hist=c.msgs.slice(0,-1),last=hist[hist.length-1],att=last.a||[];
  if(IMG_RE.test(last.t||'')&&!att.some(a=>a.k=='img'))return draw(am,last.t,ctl.signal);
- const img=att.some(a=>a.k=='img'),code=CODE_RE.test(last.t||'')||att.some(a=>a.k=='file'&&CODE_EXT.test(a.n));
- const upd=()=>live(am),lab=x=>{am.m=(am.pre?am.pre+' → ':'')+x;upd()};let msgs=build(hist);
- const go=(k)=>chain(k).then(l=>tryChain(l,msgs,d=>{am.t+=d;upd()},ctl.signal,lab));
+ const img=att.some(a=>a.k=='img'),code=CODE_RE.test(last.t||'')||att.some(a=>a.k=='file'&&CODE_EXT.test(a.n)),big=att.some(a=>a.x&&a.x.length>5000);
+ const lab=x=>{am.m=(am.pre?am.pre+' → ':'')+x;live(am)};let desc=null;
+ const mk=(p,a)=>{const ms=build(hist,P[p].budget/(a?2:1));return desc==null?ms:ms.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m)};
+ const go=k=>chain(k,big).then(l=>tryChain(l,mk,d=>{am.t+=d;live(am)},ctl.signal,lab));
  if(img&&(code||att.some(a=>a.x))){ // два шага: vision «видит», потом код/рассуждение отвечает
-  let desc='';const vm=[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...msgs[msgs.length-1].content.filter(p=>p.type=='image_url')]}];
-  await tryChain(await chain('vision'),vm,d=>desc+=d,ctl.signal,lab);am.pre=am.m;
-  msgs=msgs.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m);
+  desc='';const vmk=()=>[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...build(hist,9000).slice(-1)[0].content.filter(x=>x.type=='image_url')]}];
+  await tryChain(await chain('vision'),vmk,d=>desc+=d,ctl.signal,lab,()=>{desc=''});am.pre=am.m;
   return go(code?'code':'text')}
  return go(img?'vision':code?'code':'text')}
 
@@ -116,8 +158,9 @@ function albumHTML(imgs,mi){let o='';
   o+=`<div class="alb${one?' one':''}"${one?'':` style="grid-template-rows:${L.r};aspect-ratio:${L.ar}"`}>`+g.map((a,j)=>{const sp=L.s[j],[c,r]=Array.isArray(sp)?sp:[sp,1];
    return `<button class="ph" data-lb="${mi}" data-j="${i+j}" style="grid-column:span ${c};grid-row:span ${r}"><img src="${esc(imgSrc(a))}" alt="" loading="lazy" draggable="false"></button>`}).join('')+'</div>'}
  return o}
-const fileRow=a=>`<div class="fr"><span class="fx">${esc((a.n.split('.').pop()||'file').slice(0,4).toUpperCase())}</span><span class="fi2"><b>${esc(a.n)}</b><small>${a.s?fmt(a.s):'файл'}</small></span></div>`;
-function userMsg(m,i){const im=(m.a||[]).filter(a=>a.k=='img'),fl=(m.a||[]).filter(a=>a.k!='img');
+const fileRow=a=>{const im=a.k=='img',inner=`${im?`<img class="fx th2" src="${esc(imgSrc(a))}" alt="">`:`<span class="fx">${esc((a.n.split('.').pop()||'file').slice(0,4).toUpperCase())}</span>`}<span class="fi2"><b>${esc(a.n)}</b><small>${a.s?fmt(a.s):'файл'}</small></span>`;
+ return im&&a.u?`<a class="fr" href="${esc(a.u)}" target="_blank" rel="noopener">${inner}</a>`:`<div class="fr">${inner}</div>`};
+function userMsg(m,i){const im=(m.a||[]).filter(a=>a.k=='img'&&!a.f),fl=(m.a||[]).filter(a=>a.k!='img'||a.f);
  return `<div class="m u"><div class="b${im.length?' ph-b':''}">${im.length?albumHTML(im,i):''}${fl.map(fileRow).join('')}${m.t?`<div class="tx">${esc(m.t)}</div>`:''}</div></div>`}
 /* просмотр фото на весь экран */
 let LB={l:[],i:0};
@@ -137,7 +180,7 @@ async function send(){
  if(S.busy){ctl?.abort();return}
  const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
  S.files=[];chips();$('#inp').value='';grow();
- const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
+ const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null,f:f.asFile?1:0};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
  c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
  try{await run(c,am)}catch(e){if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
@@ -153,7 +196,7 @@ $('#list').onclick=async e=>{const d=e.target.closest('[data-del]');
  if(d){e.stopPropagation();if(confirm('Удалить чат?')){await db.del(d.dataset.del);if(S.chat?.id==d.dataset.del){S.chat=null;renderMsgs()}}return}
  const i=e.target.closest('[data-id]');if(i){S.chat=CH.find(c=>c.id==i.dataset.id);follow(S.chat);renderMsgs();document.body.classList.remove('side')}};
 $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#inp').focus()});
-$('#msgs').onclick=async e=>{const ph=e.target.closest('[data-lb]');if(ph){lbOpen(S.chat.msgs[ph.dataset.lb].a.filter(a=>a.k=='img').map(imgSrc),+ph.dataset.j);return}
+$('#msgs').onclick=async e=>{const ph=e.target.closest('[data-lb]');if(ph){lbOpen(S.chat.msgs[ph.dataset.lb].a.filter(a=>a.k=='img'&&!a.f).map(imgSrc),+ph.dataset.j);return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
  if(a=='zip'){await lib(JSZ);const z=new JSZip();namedFiles(S.chat.msgs[b.dataset.mi].t).forEach(([n,c])=>z.file(n,c));dlBlob(await z.generateAsync({type:'blob'}),'bart-project.zip');return}
@@ -165,9 +208,12 @@ $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 
 /* ---------- файлы и картинки ---------- */
 function chips(){$('#chips').innerHTML=S.files.map((f,i)=>f.k=='img'
- ?`<span class="tn${f.err?' bad':f.ok?'':' ld'}" title="${esc(f.err||f.n)}">${f.data?`<img src="${f.data}" alt="">`:''}${f.err?'<em>!</em>':''}<b data-r="${i}">✕</b></span>`
+ ?`<span class="tn${f.err?' bad':f.ok?'':' ld'}" title="${esc(f.err||f.n)}">${f.data?`<img src="${f.data}" alt="">`:''}${f.err?'<em>!</em>':''}<b data-r="${i}">✕</b>${f.ok?`<i class="bd" data-m="${i}">${f.asFile?'Файл':'Фото'}</i>`:''}</span>`
  :`<span class="chip ${f.err?'bad':''}">${ic('attachFile')} ${esc(f.n)} ${f.err?'— '+esc(f.err):f.ok?'':'…'} <b data-r="${i}">✕</b></span>`).join('')}
-$('#chips').onclick=e=>{const r=e.target.dataset.r;if(r!=null){S.files.splice(r,1);chips()}};
+$('#chips').onclick=async e=>{const r=e.target.dataset.r,m=e.target.dataset.m;if(r!=null){S.files.splice(r,1);chips()}
+ if(m!=null){const f=S.files[m];if(!f||!f.ok)return;f.asFile=!f.asFile; // фото (сжатое, в альбоме) ↔ файл (оригинал без сжатия)
+  if(f.asFile&&!f.urlF&&f.orig){f.ok=false;chips();f.urlF=await up(f.orig).catch(()=>null);f.ok=true}
+  f.url=f.asFile?(f.urlF||f.urlP):f.urlP;chips()}};
 /* сжатие картинки минимум вдвое по весу (с запасом: мелкие файлы до ~200 КБ не мучаем) */
 async function shrink(f){
  const b=await createImageBitmap(f).catch(()=>{throw new Error('не удалось открыть изображение')}),goal=Math.max(f.size/2,200e3);
@@ -184,7 +230,7 @@ const xmlText=x=>ent(x.replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<\
 const TXT_IN_ZIP=/\.(txt|md|csv|json|xml|ya?ml|toml|ini|cfg|py|js|mjs|ts|jsx|tsx|html?|css|scss|c|cpp|h|hpp|java|kt|php|rb|swift|go|rs|sql|sh|bash|bat|ps1|ipynb|vue|svelte|lua|r|cs|dart|log)$|(^|\/)(Dockerfile|Makefile|README[^\/]*|\.env[^\/]*)$/i;
 async function readFile(f,it){
  const ext=f.name.toLowerCase().split('.').pop(),buf=()=>f.arrayBuffer();
- if(f.type.startsWith('image/')||/^(jpe?g|png|gif|webp)$/.test(ext)){it.k='img';const z=await shrink(f);it.data=z.data;chips();it.url=await up(z.blob).catch(()=>null);return}
+ if(f.type.startsWith('image/')||/^(jpe?g|png|gif|webp)$/.test(ext)){it.k='img';const z=await shrink(f);it.data=z.data;chips();it.orig=f;it.urlP=it.url=await up(z.blob).catch(()=>null);return}
  if(f.size>25e6)throw new Error('файл больше 25 МБ');
  if(ext=='pdf'){await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
   const d=await pdfjsLib.getDocument({data:await buf()}).promise;let s='';
