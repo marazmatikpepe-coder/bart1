@@ -2,13 +2,17 @@ import {CFG} from './config.js';
 import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const K=Object.fromEntries(Object.entries(CFG).filter(([k])=>!['modelApi','modelscope'].includes(k)).map(([k,v])=>[k,atob(v)]));
+const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
 const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq}};
-const MS_TOKEN=CFG.modelscope||'';const MS_API='https://api-inference.modelscope.ai';
 const MAX=12000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z')};
-const ic=n=>`<i class="ic" aria-hidden="true">${SV[n]||''}</i>`;
+const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
+/* реальная высота видимой области (клавиатура на телефоне не обрезает интерфейс) */
+const vv=window.visualViewport,setVh=()=>{document.documentElement.style.setProperty('--vh',(vv?vv.height:innerHeight)+'px');if(vv&&vv.offsetTop)scrollTo(0,0)};
+setVh();vv?.addEventListener('resize',setVh);vv?.addEventListener('scroll',setVh);addEventListener('resize',setVh);addEventListener('orientationchange',()=>setTimeout(setVh,200));
+const ic=n=>`<i class="ic" data-i="${n}"></i>`; // сначала встроенная SVG-иконка; если есть assets/icons/<имя>.png (ваши иконки) — подменяется ею
+const hyd=r=>$$('i[data-i]:not([data-h])',r).forEach(e=>{e.dataset.h=1;const n=e.dataset.i;e.innerHTML=SV[n]||'';const im=new Image();im.onload=()=>e.replaceChildren(im);im.src=`assets/icons/${n}.png`});
+new MutationObserver(()=>hyd(document)).observe(document.body,{childList:true,subtree:true});
 $$('[data-ic]').forEach(e=>e.innerHTML=ic(e.dataset.ic));
 const loaded={};const lib=u=>loaded[u]??=new Promise((r,j)=>{const s=document.createElement('script');s.src=u;s.onload=r;s.onerror=()=>j(new Error('не загрузилась библиотека'));document.head.append(s)});
 const CDN='https://cdnjs.cloudflare.com/ajax/libs/';
@@ -33,66 +37,50 @@ const db={
  async del(id){if(fs)await fs.deleteDoc(fs.doc(fs.db,'users',uid,'chats',id));else{const l=L();delete l[id];localStorage.bart_chats=JSON.stringify(l);db.cb?.()}},
  watch(id,cb){return fs?fs.onSnapshot(fs.doc(fs.db,'users',uid,'chats',id),s=>s.exists()&&cb(s.data())):()=>{}}
 };
-const newChat=()=>({id:crypto.randomUUID(),title:'Новый чат',updated:Date.now(),msgs:[]});
+const uuid=()=>crypto.randomUUID?crypto.randomUUID():'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c=='x'?r:r&3|8).toString(16)});
+const newChat=()=>({id:uuid(),title:'Новый чат',updated:Date.now(),msgs:[]});
 function follow(c){unw?.();unw=db.watch(c.id,d=>{if(!S.busy&&S.chat?.id==d.id&&d.updated>S.chat.updated){S.chat=d;renderMsgs()}})}
 
-/* ---------- ModelScope gateway: API key stays on the server ---------- */
-// Deploy worker/model-scope-worker.js and set MODEL_API to its public URL in js/config.js.
-const MODEL_API=MS_API;
-async function stream(model,messages,onD,sig){
- if(!MS_TOKEN)throw new Error('В js/config.js не указан токен ModelScope.');
- const r=await fetch(MODEL_API+'/v1/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json','Authorization':'Bearer '+MS_TOKEN},body:JSON.stringify({model,messages,stream:true,max_tokens:3072,temperature:0.6})});
- if(!r.ok)throw new Error(await readableApiError(r));
+/* ---------- AI: роутер моделей ---------- */
+const mc={};
+async function ml(p){return mc[p]??=fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i))).catch(()=>[])}
+async function chain(kind){
+ const g=await ml('groq'),o=[],add=(l,re,n=9)=>l.filter(m=>re.test(m)).slice(0,n).forEach(m=>o.push(m)),ver=m=>+(m.match(/qwen(\d+(?:\.\d+)?)/)?.[1]||0),vis=/qwen.*27b|vl|vision|maverick/i;
+ if(kind=='vision'){add(g.filter(m=>vis.test(m)).sort((a,b)=>ver(b)-ver(a)),/./);o.push('qwen/qwen3.8-27b','qwen/qwen3.6-27b')}
+ else{const t=g.filter(m=>!/vl|vision|maverick/i.test(m));for(const re of kind=='code'?[/coder/i,/gpt-oss-120b/i,/qwen.*27b|qwen3-32b/i,/llama-3\.3-70b/i]:[/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen.*27b|qwen3-32b/i])add(t,re,1);add(t,/./,2);o.push('openai/gpt-oss-120b','llama-3.3-70b-versatile')}
+ return [...new Set(o)].filter(m=>!/scout/i.test(m)).map(m=>['groq',m])}
+async function stream(p,model,messages,onD,sig){
+ const body={model,messages,stream:true,temperature:.6,max_tokens:4096};if(/gpt-oss/.test(model))body.reasoning_effort='medium';
+ const r=await fetch(P[p].url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+P[p].key},body:JSON.stringify(body)});
+ if(!r.ok)throw new Error(r.status+': '+(await r.text()).slice(0,200));
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
  for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
-  for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const j=JSON.parse(l.slice(5)),d=j.choices?.[0]?.delta?.content;if(typeof d==='string'&&d){got=true;onD(d)}}catch{}}
- }
- return got;
-}
-async function readableApiError(r){let body='';try{body=await r.text()}catch{};let msg='';try{msg=JSON.parse(body).error?.message||JSON.parse(body).message||''}catch{};
- if(r.status===429)return 'ModelScope временно ограничил частоту запросов (429). Подождите 30–60 секунд и отправьте запрос один раз.';
- if(r.status===401||r.status===403)return 'ModelScope не принял токен. Проверьте токен в js/config.js и права доступа к API.';
- if(r.status===404)return 'ModelScope не нашёл модель или API-маршрут (404). Проверьте доступность модели в аккаунте.';
- if(r.status===400)return 'Модель отклонила формат запроса (400)'+(msg?': '+msg.slice(0,220):'. Проверьте вложения и историю чата.');
- return `ModelScope вернул ошибку ${r.status}`+(msg?`: ${msg.slice(0,220)`:'.');
-}
-async function tryChain(list,messages,onD,sig,label){
- label('DeepSeek-V4 · ModelScope');
- const ok=await stream('deepseek-ai/DeepSeek-V4.1-Flash',messages,onD,sig);
- if(!ok)throw new Error('DeepSeek-V4 вернул пустой ответ. Попробуйте ещё раз чуть позже.');
-}
+  for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const d=JSON.parse(l.slice(5)).choices?.[0]?.delta?.content;if(d){got=true;onD(d)}}catch{}}}
+ return got}
+async function tryChain(list,messages,onD,sig,label){const errs=[];
+ for(const [p,m] of list){try{label('Bart-beta');if(await stream(p,m,messages,onD,sig))return;errs.push(m+': пустой ответ');console.warn('model empty',m)}catch(e){if(e.name=='AbortError')throw e;console.warn('model failed',m,e.message);errs.push(e.message.slice(0,3))}}
+ throw new Error('Bart-beta сейчас не смог ответить (код '+(errs.join('/')||'—')+'). Попробуйте ещё раз; подробности в консоли (F12).')}
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
 async function draw(am,t,sig){
- if(!MS_TOKEN)throw new Error('В js/config.js не указан токен ModelScope.');
- am.m='Qwen-Image · ModelScope';live(am);
- const headers={'Content-Type':'application/json','Authorization':'Bearer '+MS_TOKEN};
- const r=await fetch(MODEL_API+'/v1/images/generations',{method:'POST',signal:sig,headers:{...headers,'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt:t.slice(0,4000)})});
- if(!r.ok)throw new Error(await readableApiError(r));
- const started=await r.json();if(!started.task_id)throw new Error('ModelScope не вернул task_id для генерации.');
- let imageUrl='';for(let i=0;i<48;i++){await new Promise((resolve,reject)=>{const id=setTimeout(resolve,5000);sig?.addEventListener('abort',()=>{clearTimeout(id);reject(new DOMException('Aborted','AbortError'))},{once:true})});const pr=await fetch(MODEL_API+'/v1/tasks/'+encodeURIComponent(started.task_id),{signal:sig,headers:{'Authorization':'Bearer '+MS_TOKEN,'X-ModelScope-Task-Type':'image_generation'}});if(!pr.ok)throw new Error(await readableApiError(pr));const st=await pr.json();if(st.task_status==='SUCCEED'){imageUrl=st.output_images?.[0]||'';break}if(st.task_status==='FAILED')throw new Error('Qwen-Image не смог создать изображение. Попробуйте изменить запрос.')}
- if(!imageUrl)throw new Error('Генерация изображения заняла слишком много времени. Попробуйте позже.');
- am.img=imageUrl;am.t='Готово, сэр. Изображение создано моделью Qwen-Image.';
-}
-const CODE_RE=new RegExp('zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\\b|class\\b|def\\b|верстк','i');
-const CODE_EXT=new RegExp('\\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$','i');
+ am.m='Bart-beta';live(am);let p='';
+ try{await tryChain(await chain('text'),[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
+ p=p||t;
+ for(let i=0;i<4;i++){const u=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
+  if(await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=u})){am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
+   try{const b=await(await fetch(u)).blob(),d=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});am.img=await up(d)}catch{}
+   return}
+  await new Promise(r=>setTimeout(r,8000))}
+ throw new Error('Генератор картинок не ответил (лимит — 1 запрос в 15 секунд). Повторите через минуту.')}
+const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
 const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении.';
 function build(hist){
- const tail=hist.slice(-8);let chars=0;
- const msgs=tail.map((m,j)=>{
-  if(m.r!=='user')return {role:'assistant',content:(clean(m.t)||'…').slice(-5000)};
-  const files=(m.a||[]).filter(a=>a.x).map(a=>`\n\n[Файл: ${a.n}]\n${a.x.slice(0,5000)}`).join('');
-  let t=((m.t||'')+files).slice(-6500);const imgs=(m.a||[]).filter(a=>a.k==='img');
-  // Only the most recent user turn sends actual image payloads. Older turns become short references,
-  // preventing the request from growing without bound and avoiding content-array 400 errors.
-  const latest=j===tail.length-1;
-  if(latest&&imgs.length){const parts=[{type:'text',text:t||'Опиши приложенные изображения.'},...imgs.slice(0,4).map(a=>({type:'image_url',image_url:{url:a.u||DATA.get(a),detail:'low'}})).filter(p=>p.image_url.url)];return {role:'user',content:parts}}
-  return {role:'user',content:(t+imgs.map(a=>`\n[Изображение: ${a.n}]`).join('')).slice(-6500)||'…'};
- });
- // Hard cap total prompt size to avoid TPM/context-limit errors on long chats.
- for(let i=msgs.length-1;i>=0;i--){const m=msgs[i];if(typeof m.content==='string'){const room=Math.max(600,22000-chars);m.content=m.content.slice(-room);chars+=m.content.length}else{const txt=m.content[0]?.text||'';chars+=txt.length}}
- while(msgs.length>2&&chars>22000){const x=msgs.shift();if(typeof x.content==='string')chars-=x.content.length;}
- return [{role:'system',content:SYS},...msgs];
-}
+ const li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true);
+ return [{role:'system',content:SYS},...hist.slice(-12).map((m,j,arr)=>{const i=hist.length-arr.length+j;
+  if(m.r!='user')return {role:'assistant',content:clean(m.t)||'…'};
+  let t=(m.t||'')+(m.a||[]).filter(a=>a.x).map(a=>`\n\n[Файл: ${a.n}]\n${a.x}`).join('');
+  const im=(m.a||[]).filter(a=>a.k=='img');
+  if(i==li&&im.length)return {role:'user',content:[{type:'text',text:t||'Опиши изображение.'},...im.slice(0,4).map(a=>({type:'image_url',image_url:{url:DATA.get(a)||a.u}}))]};
+  return {role:'user',content:t+im.map(a=>`\n[изображение: ${a.n}]`).join('')||'…'}})]}
 async function run(c,am){
  const hist=c.msgs.slice(0,-1),last=hist[hist.length-1],att=last.a||[];
  if(IMG_RE.test(last.t||'')&&!att.some(a=>a.k=='img'))return draw(am,last.t,ctl.signal);
@@ -100,7 +88,7 @@ async function run(c,am){
  const upd=()=>live(am),lab=x=>{am.m=(am.pre?am.pre+' → ':'')+x;upd()};let msgs=build(hist);
  const go=(k)=>chain(k).then(l=>tryChain(l,msgs,d=>{am.t+=d;upd()},ctl.signal,lab));
  if(img&&(code||att.some(a=>a.x))){ // два шага: vision «видит», потом код/рассуждение отвечает
-  let desc='';const lastContent=msgs[msgs.length-1]?.content;const imageParts=Array.isArray(lastContent)?lastContent.filter(p=>p.type==='image_url'):[];const vm=[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...imageParts]}];
+  let desc='';const vm=[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...msgs[msgs.length-1].content.filter(p=>p.type=='image_url')]}];
   await tryChain(await chain('vision'),vm,d=>desc+=d,ctl.signal,lab);am.pre=am.m;
   msgs=msgs.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m);
   return go(code?'code':'text')}
@@ -109,18 +97,47 @@ async function run(c,am){
 /* ---------- UI: чат ---------- */
 function renderList(list){CH=list;const q=$('#q').value.toLowerCase();
  $('#list').innerHTML=list.filter(c=>c.title.toLowerCase().includes(q)).map(c=>`<div class="ci ${S.chat?.id==c.id?'on':''}" data-id="${c.id}"><span>${esc(c.title)}</span><button data-del="${c.id}">${ic('delete')}</button></div>`).join('')}
-function fileIcon(name){const e=(name.split('.').pop()||'FILE').toLowerCase();const map={pdf:'file-text',doc:'file-text',docx:'file-text',xls:'table',xlsx:'table',ppt:'presentation',pptx:'presentation',zip:'archive',rar:'archive',7z:'archive',js:'code',ts:'code',py:'code',html:'code',css:'code',json:'braces',txt:'file-text',md:'file-text',mp3:'music',wav:'music',mp4:'film',mov:'film'};return map[e]||'file'}
-const fileSvg={file:sv('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8'), 'file-text':sv('M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M8 13h8M8 17h8'),table:sv('M3 4h18v16H3zM3 10h18M9 4v16M15 4v16'),presentation:sv('M3 4h18v12H3zM12 16v5M8 21h8'),archive:sv('M4 4h16v16H4zM9 4v4h6V4M10 12h4M10 15h4'),code:sv('m8 8-4 4 4 4m8-8 4 4-4 4m-3-10-2 12'),braces:sv('M8 4H6a2 2 0 0 0-2 2v3a2 2 0 0 1-2 3 2 2 0 0 1 2 3v3a2 2 0 0 0 2 2h2M16 4h2a2 2 0 0 1 2 2v3a2 2 0 0 0 2 3 2 2 0 0 0-2 3v3a2 2 0 0 1-2 2h-2'),music:sv('M9 18V5l12-2v13M9 18a3 3 0 1 1-3-3c1.7 0 3 1 3 3zm12-2a3 3 0 1 1-3-3c1.7 0 3 1 3 3z'),'film':sv('M4 4h16v16H4zM4 8h16M4 16h16M8 4v4M16 4v4M8 16v4M16 16v4')};
+/* ---------- альбом вложений (мозаика как в мессенджерах) ---------- */
+// s — ширина ячейки в 6-колоночной сетке (или [колонки,строки]); r — высоты строк; ar — пропорции альбома
+const LAY=[0,{s:[6]},
+ {s:[3,3],r:'1fr',ar:'1.25/1'},
+ {s:[[4,2],2,2],r:'1fr 1fr',ar:'1/1'},
+ {s:[[4,3],2,2,2],r:'1fr 1fr 1fr',ar:'1/1'},
+ {s:[3,3,2,2,2],r:'1.45fr 1fr',ar:'1/.93'},
+ {s:[2,2,2,2,2,2],r:'1fr 1fr',ar:'3/2'},
+ {s:[6,2,2,2,2,2,2],r:'1.95fr 1fr 1fr',ar:'1/1.32'},
+ {s:[3,3,2,2,2,2,2,2],r:'1.5fr 1fr 1fr',ar:'1/1.17'},
+ {s:[2,2,2,2,2,2,2,2,2],r:'1fr 1fr 1fr',ar:'1/1'},
+ {s:[6,2,2,2,2,2,2,2,2,2],r:'1.5fr 1fr 1fr 1fr',ar:'1/1.5'}];
+const imgSrc=a=>a.u||DATA.get(a)||'';
+const fmt=n=>n<1024?n+' Б':n<1048576?Math.round(n/1024)+' КБ':(n/1048576).toFixed(1)+' МБ';
+function albumHTML(imgs,mi){let o='';
+ for(let i=0;i<imgs.length;i+=10){const g=imgs.slice(i,i+10),L=LAY[g.length],one=g.length==1;
+  o+=`<div class="alb${one?' one':''}"${one?'':` style="grid-template-rows:${L.r};aspect-ratio:${L.ar}"`}>`+g.map((a,j)=>{const sp=L.s[j],[c,r]=Array.isArray(sp)?sp:[sp,1];
+   return `<button class="ph" data-lb="${mi}" data-j="${i+j}" style="grid-column:span ${c};grid-row:span ${r}"><img src="${esc(imgSrc(a))}" alt="" loading="lazy" draggable="false"></button>`}).join('')+'</div>'}
+ return o}
+const fileRow=a=>`<div class="fr"><span class="fx">${esc((a.n.split('.').pop()||'file').slice(0,4).toUpperCase())}</span><span class="fi2"><b>${esc(a.n)}</b><small>${a.s?fmt(a.s):'файл'}</small></span></div>`;
+function userMsg(m,i){const im=(m.a||[]).filter(a=>a.k=='img'),fl=(m.a||[]).filter(a=>a.k!='img');
+ return `<div class="m u"><div class="b${im.length?' ph-b':''}">${im.length?albumHTML(im,i):''}${fl.map(fileRow).join('')}${m.t?`<div class="tx">${esc(m.t)}</div>`:''}</div></div>`}
+/* просмотр фото на весь экран */
+let LB={l:[],i:0};
+const lbShow=()=>{$('#lbi').src=LB.l[LB.i];$('#lbc').textContent=LB.l.length>1?`${LB.i+1} / ${LB.l.length}`:'';$('#lbp').hidden=$('#lbn').hidden=LB.l.length<2};
+const lbOpen=(l,i)=>{LB={l,i};lbShow();$('#lb').hidden=false},lbClose=()=>{$('#lb').hidden=true;$('#lbi').removeAttribute('src')},lbMove=d=>{LB.i=(LB.i+d+LB.l.length)%LB.l.length;lbShow()};
+$('#lbx').onclick=lbClose;$('#lbp').onclick=()=>lbMove(-1);$('#lbn').onclick=()=>lbMove(1);$('#lb').onclick=e=>{if(e.target.id=='lb')lbClose()};
+addEventListener('keydown',e=>{if($('#lb').hidden)return;if(e.key=='Escape')lbClose();if(e.key=='ArrowLeft')lbMove(-1);if(e.key=='ArrowRight')lbMove(1)});
+let tx0=null;$('#lb').addEventListener('touchstart',e=>tx0=e.touches[0].clientX,{passive:true});
+$('#lb').addEventListener('touchend',e=>{if(tx0==null||LB.l.length<2)return;const d=e.changedTouches[0].clientX-tx0;tx0=null;if(Math.abs(d)>50)lbMove(d>0?-1:1)});
+
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
- $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r==='user'?`<div class="m u"><div class="b">${(()=>{const imgs=(m.a||[]).filter(a=>a.k==='img'),files=(m.a||[]).filter(a=>a.k!=='img');return `${imgs.length?`<div class="media-album count-${Math.min(imgs.length,4)}">${imgs.slice(0,4).map((a,j)=>`<a class="album-item" href="${esc(a.u||DATA.get(a)||'#')}" ${a.u?'target="_blank" rel="noopener"':''} aria-label="Открыть изображение ${j+1}"><img src="${esc(a.u||DATA.get(a)||'data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs=')}" data-local-image="${esc(a.u?'':a.id||'')}" loading="lazy" alt="${esc(a.n||'Изображение')}">${imgs.length>4&&j===3?`<span class="album-more">+${imgs.length-4}</span>`:''}</a>`).join('')}</div>`:''}${files.map(a=>`<button type="button" class="file-card" data-file-download="${esc(a.id||'')}" title="Скачать ${esc(a.n)}"><span class="file-icon">${fileSvg[fileIcon(a.n)]||fileSvg.file}</span><span class="file-info"><strong>${esc(a.n)}</strong><small>${esc(a.mime||'Файл')} · ${esc(a.sizeLabel||'вложение')}</small></span><span class="file-ext">${ic('download')}</span></button>`).join('')}`})()}${esc(m.t)}</div></div>`
-  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt="Созданное изображение"><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
- $('#msgs').scrollTop=1e9;renderList(CH);hydrateLocalImages()}
+ $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?userMsg(m,i)
+  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
+ $('#msgs').scrollTop=1e9;renderList(CH)}
 let raf=0;function live(am){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e)return;$('.md',e).innerHTML=md(am.t)||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9})}
 async function send(){
  if(S.busy){ctl?.abort();return}
  const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
  S.files=[];chips();$('#inp').value='';grow();
- const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={id:f.id||'',k:f.k,n:f.n,u:f.url||null,x:f.text||null,sizeLabel:f.sizeLabel||'',mime:f.mime||''};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
+ const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
  c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
  try{await run(c,am)}catch(e){if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
@@ -136,7 +153,8 @@ $('#list').onclick=async e=>{const d=e.target.closest('[data-del]');
  if(d){e.stopPropagation();if(confirm('Удалить чат?')){await db.del(d.dataset.del);if(S.chat?.id==d.dataset.del){S.chat=null;renderMsgs()}}return}
  const i=e.target.closest('[data-id]');if(i){S.chat=CH.find(c=>c.id==i.dataset.id);follow(S.chat);renderMsgs();document.body.classList.remove('side')}};
 $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#inp').focus()});
-$('#msgs').onclick=async e=>{const dl=e.target.closest('[data-file-download]');if(dl){await downloadAttachment(dl.dataset.fileDownload);return}const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
+$('#msgs').onclick=async e=>{const ph=e.target.closest('[data-lb]');if(ph){lbOpen(S.chat.msgs[ph.dataset.lb].a.filter(a=>a.k=='img').map(imgSrc),+ph.dataset.j);return}
+ const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
  if(a=='zip'){await lib(JSZ);const z=new JSZip();namedFiles(S.chat.msgs[b.dataset.mi].t).forEach(([n,c])=>z.file(n,c));dlBlob(await z.generateAsync({type:'blob'}),'bart-project.zip');return}
  const code=$('code',b.closest('.code')).textContent;
@@ -145,24 +163,28 @@ $('#msgs').onclick=async e=>{const dl=e.target.closest('[data-file-download]');i
  if(a=='run'){$('#modal iframe').srcdoc=code;$('#modal').hidden=false}};
 $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 
-async function hydrateLocalImages(){for(const im of $$('#msgs img[data-local-image]')){const id=im.dataset.localImage;if(!id||im.dataset.hydrated)return;im.dataset.hydrated='1';try{const d=await attDB(),v=await new Promise((resolve,reject)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});d.close();if(v?.blob)im.src=URL.createObjectURL(v.blob)}catch(e){console.warn('Не удалось восстановить локальное изображение',e)}}}
-/* Local attachment store: keeps original files downloadable after refresh on this browser. */
-const ATT_DB='bart-attachments-v1';
-function attDB(){return new Promise((resolve,reject)=>{const q=indexedDB.open(ATT_DB,1);q.onupgradeneeded=()=>q.result.createObjectStore('files');q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)})}
-async function saveAttachment(id,blob,name,type){const d=await attDB();return new Promise((resolve,reject)=>{const t=d.transaction('files','readwrite');t.objectStore('files').put({blob,name,type},id);t.oncomplete=()=>{d.close();resolve()};t.onerror=()=>{d.close();reject(t.error)}})}
-async function downloadAttachment(id){if(!id){toast('Исходный файл недоступен на этом устройстве.');return}try{const d=await attDB(),v=await new Promise((resolve,reject)=>{const q=d.transaction('files').objectStore('files').get(id);q.onsuccess=()=>resolve(q.result);q.onerror=()=>reject(q.error)});d.close();if(!v){toast('Файл сохранён на другом устройстве или отсутствует в локальном хранилище.');return}dlBlob(v.blob,v.name||'attachment')}catch(e){toast('Не удалось скачать вложение: '+e.message)}}
 /* ---------- файлы и картинки ---------- */
-function chips(){$('#chips').innerHTML=S.files.map((f,i)=>`<span class="pending-file ${f.err?'bad':''}"><span class="pending-icon">${ic(f.k==='img'?'camera':'attachFile')}</span><span class="pending-info"><b>${esc(f.n)}</b><small>${esc(f.sizeLabel||'Подготовка…')}${f.err?' · '+esc(f.err):f.ok?' · готово':' · обрабатывается'}</small></span><button type="button" data-r="${i}" aria-label="Убрать вложение">×</button></span>`).join('')}
+function chips(){$('#chips').innerHTML=S.files.map((f,i)=>f.k=='img'
+ ?`<span class="tn${f.err?' bad':f.ok?'':' ld'}" title="${esc(f.err||f.n)}">${f.data?`<img src="${f.data}" alt="">`:''}${f.err?'<em>!</em>':''}<b data-r="${i}">✕</b></span>`
+ :`<span class="chip ${f.err?'bad':''}">${ic('attachFile')} ${esc(f.n)} ${f.err?'— '+esc(f.err):f.ok?'':'…'} <b data-r="${i}">✕</b></span>`).join('')}
 $('#chips').onclick=e=>{const r=e.target.dataset.r;if(r!=null){S.files.splice(r,1);chips()}};
-const shrink=async f=>{if(f.type==='image/gif'||f.type==='image/svg+xml')return await new Promise((resolve,reject)=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.onerror=reject;r.readAsDataURL(f)});const b=await createImageBitmap(f),k=Math.min(1,1440/Math.max(b.width,b.height)),c=document.createElement('canvas');c.width=Math.max(1,Math.round(b.width*k));c.height=Math.max(1,Math.round(b.height*k));const x=c.getContext('2d',{alpha:false});x.imageSmoothingEnabled=true;x.imageSmoothingQuality='high';x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(b,0,0,c.width,c.height);b.close?.();return c.toDataURL('image/jpeg',.68)};
-async function up(d){const fd=new FormData();fd.append('image',d.split(',')[1]);const j=await(await fetch('https://api.imgbb.com/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(!j.data)throw 0;return j.data.url}
+/* сжатие картинки минимум вдвое по весу (с запасом: мелкие файлы до ~200 КБ не мучаем) */
+async function shrink(f){
+ const b=await createImageBitmap(f).catch(()=>{throw new Error('не удалось открыть изображение')}),goal=Math.max(f.size/2,200e3);
+ let k=Math.min(1,2048/Math.max(b.width,b.height)),q=.86,o;const c=document.createElement('canvas'),x=c.getContext('2d');
+ for(let i=0;i<10;i++){c.width=Math.max(1,Math.round(b.width*k));c.height=Math.max(1,Math.round(b.height*k));x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(b,0,0,c.width,c.height);
+  o=await new Promise(r=>c.toBlob(r,'image/jpeg',q));if(!o)throw new Error('не удалось сжать изображение');if(o.size<=goal)break;if(q>.56)q-=.1;else k*=.8}
+ b.close?.();
+ return {blob:o,data:await new Promise(r=>{const d=new FileReader();d.onload=()=>r(d.result);d.readAsDataURL(o)})}}
+async function up(d){let last;for(let t=0;t<2;t++){try{const fd=new FormData();if(typeof d=='string')fd.append('image',d.split(',')[1]);else fd.append('image',d,'photo.jpg');
+ const j=await(await fetch('https://api.imgbb.com/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(j.data)return j.data.url;last=new Error(j.error?.message||'imgbb')}catch(e){last=e}}throw last}
 const JSZ=CDN+'jszip/3.10.1/jszip.min.js',XLS=CDN+'xlsx/0.18.5/xlsx.full.min.js';
 const ent=x=>x.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
 const xmlText=x=>ent(x.replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<\/(?:text:p|text:h|p|div|h\d|li|tr)>|<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,' ')).replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim();
 const TXT_IN_ZIP=/\.(txt|md|csv|json|xml|ya?ml|toml|ini|cfg|py|js|mjs|ts|jsx|tsx|html?|css|scss|c|cpp|h|hpp|java|kt|php|rb|swift|go|rs|sql|sh|bash|bat|ps1|ipynb|vue|svelte|lua|r|cs|dart|log)$|(^|\/)(Dockerfile|Makefile|README[^\/]*|\.env[^\/]*)$/i;
 async function readFile(f,it){
  const ext=f.name.toLowerCase().split('.').pop(),buf=()=>f.arrayBuffer();
- if(f.type.startsWith('image/')||/^(jpe?g|png|gif|webp)$/.test(ext)){it.k='img';it.data=await shrink(f);it.url=await up(it.data).catch(()=>null);return}
+ if(f.type.startsWith('image/')||/^(jpe?g|png|gif|webp)$/.test(ext)){it.k='img';const z=await shrink(f);it.data=z.data;chips();it.url=await up(z.blob).catch(()=>null);return}
  if(f.size>25e6)throw new Error('файл больше 25 МБ');
  if(ext=='pdf'){await lib(CDN+'pdf.js/3.11.174/pdf.min.js');pdfjsLib.GlobalWorkerOptions.workerSrc=CDN+'pdf.js/3.11.174/pdf.worker.min.js';
   const d=await pdfjsLib.getDocument({data:await buf()}).promise;let s='';
@@ -183,11 +205,11 @@ async function readFile(f,it){
  else if(ext=='rtf'){it.text=(await f.text()).replace(/\{\\(?:fonttbl|colortbl|stylesheet|info|\*)(?:[^{}]|\{[^{}]*\})*\}/g,'').replace(/\\u(-?\d+)(?:\\'[0-9a-f]{2}|\??)/gi,(m,c)=>String.fromCharCode(c<0?+c+65536:+c)).replace(/\\'([0-9a-f]{2})/gi,(m,h)=>new TextDecoder('windows-1251').decode(new Uint8Array([parseInt(h,16)]))).replace(/\\pard?/g,'\n').replace(/\\tab/g,'\t').replace(/\\[a-z]+-?\d* ?/gi,'').replace(/[{}]/g,'').replace(/\n{3,}/g,'\n\n').trim()}
  else if(/^html?$/.test(ext))it.text=xmlText(await f.text());
  else if(ext=='ipynb')it.text=(JSON.parse(await f.text()).cells||[]).map(c=>`# [${c.cell_type}]\n`+[].concat(c.source||[]).join('')).join('\n\n');
- else{if(f.size>3e6)throw new Error('текстовый файл больше 3 МБ');const t=await f.text();if(/\u0000/.test(t)||(t.match(/\uFFFD/g)||[]).length>20){it.text=`[Файл «${f.name}» прикреплён (${f.type||'неизвестный тип'}, ${it.sizeLabel}), но браузер не умеет извлечь из этого формата текст. Попроси пользователя конвертировать его в PDF/TXT или поддерживаемый документ.]`}else it.text=t}
+ else{if(f.size>3e6)throw new Error('текстовый файл больше 3 МБ');const t=await f.text();if(/\u0000/.test(t)||(t.match(/\uFFFD/g)||[]).length>20)throw new Error('формат не поддерживается');it.text=t}
 }
-const humanSize=n=>n<1024?`${n} Б`:n<1048576?`${(n/1024).toFixed(1)} КБ`:`${(n/1048576).toFixed(1)} МБ`;
-async function addFiles(list){for(const f of list){const it={id:crypto.randomUUID(),n:f.name||'photo.jpg',k:'file',mime:f.type||'Файл',sizeLabel:humanSize(f.size),size:f.size};S.files.push(it);chips();
- try{await saveAttachment(it.id,f,it.n,it.mime);await readFile(f,it);if(it.text&&it.text.length>MAX)it.text=it.text.slice(0,MAX)+'\n…[текст обрезан]';it.ok=true}catch(e){it.err=e.message||'ошибка'}chips()}}
+async function addFiles(list){if(S.files.length+list.length>20){toast('Можно прикрепить не больше 20 файлов за раз');list=list.slice(0,Math.max(0,20-S.files.length))}
+ await Promise.all(list.map(async f=>{const it={n:f.name||'photo.jpg',k:'file',s:f.size};S.files.push(it);chips();
+  try{await readFile(f,it);if(it.text&&it.text.length>MAX)it.text=it.text.slice(0,MAX)+'\n…[текст обрезан]';it.ok=true}catch(e){it.err=e.message||'ошибка';toast(it.n+': '+it.err)}chips()}))}
 /* ---------- голосовой ввод (Whisper) ---------- */
 let rec,chunks;
 async function mic(){const b=$('#mic');if(rec){rec.stop();return}
@@ -196,28 +218,71 @@ async function mic(){const b=$('#mic');if(rec){rec.stop();return}
    $('#inp').placeholder='Распознаю речь…';
    try{const fd=new FormData();fd.append('file',bl,'voice.'+(bl.type.includes('mp4')?'mp4':'webm'));fd.append('model','whisper-large-v3-turbo');
     const r=await fetch(P.groq.url+'/audio/transcriptions',{method:'POST',headers:{Authorization:'Bearer '+P.groq.key},body:fd});if(!r.ok)throw new Error(r.status);
-    $('#inp').value=($('#inp').value+' '+(await r.json()).text).trim();grow();$('#inp').focus()}catch(e){toast('Не удалось распознать речь ('+e.message+')')}finally{$('#inp').placeholder='Напишите сообщение…'}};
+    $('#inp').value=($('#inp').value+' '+(await r.json()).text).trim();grow();$('#inp').focus()}catch(e){toast('Не удалось распознать речь ('+e.message+')')}finally{$('#inp').placeholder='Сообщение…'}};
   rec.start();b.classList.add('rec');b.innerHTML=ic('stop')}catch(e){toast('Нет доступа к микрофону — разрешите его в настройках браузера для этого сайта')}}
 $('#mic').onclick=mic;
 $('#clip').onclick=()=>$('#fi').click();$('#cam').onclick=()=>$('#ci').click();
 $('#fi').onchange=$('#ci').onchange=e=>{addFiles([...e.target.files]);e.target.value=''};
-$('#inp').onpaste=e=>{const f=[...e.clipboardData.files];if(f.length){e.preventDefault();addFiles(f)}};
-let dragDepth=0;addEventListener('dragenter',e=>{if(!e.dataTransfer?.types?.includes('Files'))return;e.preventDefault();dragDepth++;document.body.classList.add('file-drag')});addEventListener('dragover',e=>{if(e.dataTransfer?.types?.includes('Files'))e.preventDefault()});addEventListener('dragleave',e=>{if(!e.dataTransfer?.types?.includes('Files'))return;dragDepth=Math.max(0,dragDepth-1);if(!dragDepth)document.body.classList.remove('file-drag')});addEventListener('drop',e=>{if(!e.dataTransfer?.files?.length)return;e.preventDefault();dragDepth=0;document.body.classList.remove('file-drag');addFiles([...e.dataTransfer.files])});
+addEventListener('paste',e=>{const f=[...(e.clipboardData?.files||[])];if(f.length&&!$('#app').hidden){e.preventDefault();addFiles(f)}});
+/* drag & drop: подсветка всего окна, файлы падают во вложения */
+let dc=0;const hasF=e=>[...(e.dataTransfer?.types||[])].includes('Files'),appOn=()=>!$('#app').hidden,dropOff=()=>{dc=0;$('#drop').hidden=true};
+addEventListener('dragenter',e=>{if(!hasF(e)||!appOn())return;e.preventDefault();dc++;$('#drop').hidden=false});
+addEventListener('dragover',e=>{e.preventDefault();if(hasF(e)&&e.dataTransfer)e.dataTransfer.dropEffect='copy'});
+addEventListener('dragleave',e=>{if(!hasF(e))return;dc=Math.max(0,dc-1);if(!dc)$('#drop').hidden=true});
+addEventListener('dragend',dropOff);addEventListener('blur',dropOff);
+addEventListener('drop',e=>{e.preventDefault();const f=[...(e.dataTransfer?.files||[])];dropOff();if(f.length&&appOn())addFiles(f)});
 
 $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme,d=t?t=='dark':matchMedia('(prefers-color-scheme:dark)').matches,n=d?'light':'dark';document.documentElement.dataset.theme=n;localStorage.bart_theme=n};
-/* ---------- вход: Firebase Auth (почта и Google) ---------- */
-const show=n=>['auth','verify','app'].forEach(s=>$('#'+s).hidden=s!=n);
-const ER={'auth/invalid-credential':'Неверная почта или пароль','auth/email-already-in-use':'Эта почта уже зарегистрирована','auth/weak-password':'Пароль должен содержать не менее 6 символов','auth/too-many-requests':'Слишком много попыток. Подожди немного и попробуй снова','auth/missing-password':'Введите пароль','auth/operation-not-allowed':'Этот способ входа не включён в Firebase','auth/popup-closed-by-user':'Окно входа Google закрыто до завершения','auth/popup-blocked':'Браузер заблокировал окно Google. Разреши всплывающие окна для сайта','auth/unauthorized-domain':'Домен сайта не добавлен в Firebase: Authentication → Settings → Authorized domains','auth/network-request-failed':'Не удалось подключиться к Firebase. Проверь интернет или отключи блокировщик для сайта','auth/invalid-email':'Проверь адрес электронной почты'};
-const er=e=>ER[e.code]||e.message||'Неизвестная ошибка',fail=(m,id='err')=>$('#'+id).textContent=m;
-let authMode='login';function setAuthMode(mode){authMode=mode;$$('[data-auth-mode]').forEach(b=>b.classList.toggle('on',b.dataset.authMode===mode));$('#auth-submit').textContent=mode==='login'?'Войти':'Создать аккаунт';$('#pw').autocomplete=mode==='login'?'current-password':'new-password';$('#reset').hidden=mode!=='login';fail('')}
-$$('[data-auth-mode]').forEach(b=>b.onclick=()=>setAuthMode(b.dataset.authMode));
-async function enter(u){uid=u?u.uid:'local';fs=u?{...fb.f,db:fb.db}:null;S.chat=null;unl?.();show('app');$('#who').textContent=u?(u.email||u.displayName||'Аккаунт Google'):'Локальный режим';$('#out').hidden=!u;$('#dev').textContent=u?'':'данные только на этом устройстве';unl=db.list(l=>{renderList(l);if(!S.busy&&!S.chat)renderMsgs()});renderMsgs();if(u){const did=localStorage.bart_dev||(localStorage.bart_dev=Math.random().toString(36).slice(2,8)),R=fb.d,pr=R.ref(fb.rt,`presence/${uid}/${did}`);R.set(pr,{ua:navigator.userAgent.slice(0,60),t:Date.now()});R.onDisconnect(pr).remove();R.onValue(R.ref(fb.rt,`presence/${uid}`),s=>$('#dev').textContent='☁ синхронизация · онлайн: '+Object.keys(s.val()||{}).length)}}
-let vt;async function boot(){if(FB.apiKey.startsWith('PASTE'))return enter(null);const names=['app','auth','firestore','database'];let m;try{m=await Promise.all(names.map(n=>import(`${G}firebase-${n}.js`)))}catch(primary){console.warn('Firebase gstatic недоступен, пробую запасной CDN',primary);try{m=await Promise.all([import('https://esm.sh/firebase-app@10.12.2'),import('https://esm.sh/firebase-auth@10.12.2'),import('https://esm.sh/firebase-firestore@10.12.2'),import('https://esm.sh/firebase-database@10.12.2')])}catch(secondary){throw new Error('Firebase SDK не загрузился ни с основного, ни с запасного CDN. Проверьте сеть/блокировщик. '+secondary.message)}}const app=m[0].initializeApp(FB);fb={au:m[1],f:m[2],d:m[3],auth:m[1].getAuth(app),db:m[2].getFirestore(app),rt:m[3].getDatabase(app)};const A=fb.au;
- A.onAuthStateChanged(fb.auth,u=>{clearInterval(vt);if(!u){unl?.();show('auth');return}if(u.email&&!u.emailVerified&&!u.providerData.some(p=>p.providerId==='google.com')){$('#vem').textContent=u.email;show('verify');vt=setInterval(async()=>{try{await u.reload();if(u.emailVerified){clearInterval(vt);enter(u)}}catch(e){}},4000);return}enter(u)});
- $('#f-email').onsubmit=async e=>{e.preventDefault();fail('');const email=$('#em').value.trim(),password=$('#pw').value;if(password.length<6){fail('Пароль должен содержать не менее 6 символов');return}const submit=$('#auth-submit');submit.disabled=true;submit.textContent='Подождите…';try{if(authMode==='login')await A.signInWithEmailAndPassword(fb.auth,email,password);else{const r=await A.createUserWithEmailAndPassword(fb.auth,email,password);await A.sendEmailVerification(r.user)}}catch(x){fail(er(x))}finally{submit.disabled=false;submit.textContent=authMode==='login'?'Войти':'Создать аккаунт'}};
- $('#google').onclick=async()=>{fail('');const b=$('#google');b.disabled=true;try{const provider=new A.GoogleAuthProvider();if(matchMedia('(pointer: coarse)').matches)await A.signInWithRedirect(fb.auth,provider);else await A.signInWithPopup(fb.auth,provider)}catch(x){fail(er(x));b.disabled=false}};A.getRedirectResult(fb.auth).catch(x=>fail(er(x)));
- $('#reset').onclick=async()=>{const email=$('#em').value.trim();if(!email){fail('Сначала введи свою почту');$('#em').focus();return}try{await A.sendPasswordResetEmail(fb.auth,email);fail('Ссылка для сброса пароля отправлена на почту')}catch(x){fail(er(x))}};
- $('#vok').onclick=async()=>{try{const u=fb.auth.currentUser;await u.reload();u.emailVerified?enter(u):fail('Почта ещё не подтверждена','verr')}catch(x){fail(er(x),'verr')}};$('#vre').onclick=async()=>{try{await A.sendEmailVerification(fb.auth.currentUser);fail('Письмо отправлено','verr')}catch(x){fail(er(x),'verr')}};$('#vout').onclick=$('#out').onclick=()=>A.signOut(fb.auth)}
-boot().catch(e=>{console.error(e);alert('Firebase не запустился: '+e.message+'\nРежим без аккаунта.');enter(null)});
+/* ---------- вход: Firebase Auth (почта + Google) ---------- */
+const show=n=>['splash','auth','verify','app'].forEach(x=>$('#'+x).hidden=x!=n);
+const NET='Нет связи с сервером входа. Проверьте интернет; в мобильной сети (особенно с ограничениями) попробуйте Wi-Fi или VPN.';
+const ER={'auth/invalid-credential':'Неверная почта или пароль','auth/wrong-password':'Неверная почта или пароль','auth/user-not-found':'Аккаунт с такой почтой не найден','auth/invalid-email':'Некорректная почта','auth/email-already-in-use':'Эта почта уже зарегистрирована — перейдите во вкладку «Вход»','auth/weak-password':'Пароль слишком короткий (от 6 символов)','auth/password-does-not-meet-requirements':'Пароль не подходит: нужен посложнее','auth/too-many-requests':'Слишком много попыток, подождите немного','auth/missing-password':'Введите пароль','auth/missing-email':'Введите почту','auth/network-request-failed':NET,'auth/operation-not-allowed':'Этот способ входа не включён в Firebase (Authentication → Sign-in method)','auth/unauthorized-domain':'Домен сайта не добавлен в Firebase (Authentication → Settings → Authorized domains)','auth/popup-blocked':'Браузер заблокировал окно входа — разрешите всплывающие окна','auth/user-disabled':'Аккаунт отключён','auth/admin-restricted-operation':'Регистрация отключена в настройках Firebase','auth/internal-error':'Внутренняя ошибка сервера входа, попробуйте ещё раз','auth/web-storage-unsupported':'Браузер блокирует хранилище — выключите приватный режим или откройте сайт в Chrome/Safari'};
+const er=e=>ER[e.code]||('Не удалось войти ('+(e.code||e.message||'неизвестная ошибка')+')'),fail=(m,id='err',ok)=>{const e=$('#'+id);e.textContent=m||'';e.classList.toggle('ok',!!ok)};
+const wait=async(btn,fn)=>{btn.disabled=true;btn.classList.add('ld');try{return await fn()}finally{btn.disabled=false;btn.classList.remove('ld')}};
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,j)=>setTimeout(()=>j(new Error('timeout')),ms))]);
+/* вкладки «Вход» / «Регистрация» — два отдельных раздела */
+const tab=n=>{$$('.tabs button').forEach(x=>x.classList.toggle('on',x.dataset.tab==n));$('#f-login').hidden=n!='login';$('#f-reg').hidden=n!='reg';fail('')};
+$$('[data-tab],[data-go]').forEach(b=>b.onclick=()=>{const n=b.dataset.tab||b.dataset.go,v=($('#f-login').hidden?$('#r-em'):$('#li-em')).value;tab(n);const t=n=='reg'?$('#r-em'):$('#li-em');if(!t.value)t.value=v});
+$$('[data-eye]').forEach(b=>{b.innerHTML=ic('eye');b.onclick=()=>{const i=b.parentElement.querySelector('input'),h=i.type=='password';i.type=h?'text':'password';b.innerHTML=ic(h?'eyeOff':'eye')}});
+if(/Telegram|FBAN|FBAV|Instagram|VKApp|Line\/|; wv\)|(iPhone|iPad)(?!.*Safari)/i.test(navigator.userAgent))$('#inapp').hidden=false;
+/* пока Firebase не загрузился (или недоступен) — понятная ошибка вместо тишины */
+$('#f-login').onsubmit=$('#f-reg').onsubmit=e=>{e.preventDefault();fail(NET)};$('#google').onclick=$('#reset').onclick=()=>fail(NET);$('#skip').onclick=()=>enter(null);
+async function enter(u){
+ uid=u?u.uid:'local';fs=u?{...fb.f,db:fb.db}:null;S.chat=null;unl?.();show('app');setVh();
+ $('#who').textContent=u?(u.displayName||u.email):'Локальный режим';$('#out').hidden=!u;$('#dev').textContent=u?'':'данные только на этом устройстве';
+ unl=db.list(l=>{renderList(l);if(!S.busy&&!S.chat)renderMsgs()});renderMsgs();
+ if(u){const did=localStorage.bart_dev||(localStorage.bart_dev=Math.random().toString(36).slice(2,8)),R=fb.d,pr=R.ref(fb.rt,`presence/${uid}/${did}`);
+  R.set(pr,{ua:navigator.userAgent.slice(0,60),t:Date.now()}).catch(()=>{});R.onDisconnect(pr).remove().catch(()=>{});
+  R.onValue(R.ref(fb.rt,`presence/${uid}`),s=>$('#dev').textContent='☁ синхронизация · онлайн: '+Object.keys(s.val()||{}).length,()=>{})}}
+let vt;
+async function boot(){
+ if(FB.apiKey.startsWith('PASTE'))return enter(null);
+ let m;try{m=await withTimeout(Promise.all(['app','auth','firestore','database'].map(n=>import(`${G}firebase-${n}.js`))),15000)}
+ catch(e){console.error(e);show('auth');fail(NET);$('#skip').hidden=false;return}
+ const app=m[0].initializeApp(FB),A=m[1];
+ /* автоопределение long-polling: Firestore не зависает в мобильных сетях и за прокси */
+ let dbf;try{dbf=m[2].initializeFirestore(app,{experimentalAutoDetectLongPolling:true})}catch{dbf=m[2].getFirestore(app)}
+ fb={au:A,f:m[2],d:m[3],auth:A.getAuth(app),db:dbf,rt:m[3].getDatabase(app)};
+ const needVerify=u=>u.providerData.some(p=>p.providerId=='password')&&!u.emailVerified;
+ A.onAuthStateChanged(fb.auth,u=>{clearInterval(vt);if(!u){unl?.();show('auth');return}
+  if(needVerify(u)){$('#vem').textContent=u.email;show('verify');vt=setInterval(async()=>{await u.reload().catch(()=>{});if(u.emailVerified){clearInterval(vt);enter(u)}},4000);return}
+  enter(u)});
+ document.addEventListener('visibilitychange',async()=>{const u=fb.auth.currentUser;if(document.hidden||!u||$('#verify').hidden)return;await u.reload().catch(()=>{});if(u.emailVerified){clearInterval(vt);enter(u)}});
+ $('#f-login').onsubmit=e=>{e.preventDefault();fail('');const em=$('#li-em').value.trim(),pw=$('#li-pw').value;
+  if(!em)return fail('Введите почту');if(!pw)return fail('Введите пароль');
+  wait($('#f-login .btn'),()=>A.signInWithEmailAndPassword(fb.auth,em,pw)).catch(x=>fail(er(x)))};
+ $('#f-reg').onsubmit=e=>{e.preventDefault();fail('');const em=$('#r-em').value.trim(),pw=$('#r-pw').value;
+  if(!/^\S+@\S+\.\S+$/.test(em))return fail('Введите корректную почту');if(pw.length<6)return fail('Пароль — от 6 символов');if(pw!=$('#r-pw2').value)return fail('Пароли не совпадают');
+  wait($('#f-reg .btn'),async()=>{const r=await A.createUserWithEmailAndPassword(fb.auth,em,pw);A.sendEmailVerification(r.user).catch(()=>{})}).catch(x=>fail(er(x)))};
+ $('#reset').onclick=()=>{const em=$('#li-em').value.trim();if(!em)return fail('Введите почту выше — вышлем ссылку для сброса пароля');
+  A.sendPasswordResetEmail(fb.auth,em).then(()=>fail('Письмо для сброса отправлено — проверьте «Спам»','err',true)).catch(x=>fail(er(x)))};
+ $('#google').onclick=()=>wait($('#google'),async()=>{fail('');const p=new A.GoogleAuthProvider();p.setCustomParameters({prompt:'select_account'});
+  try{await A.signInWithPopup(fb.auth,p)}catch(x){if(/popup-blocked|operation-not-supported|web-storage-unsupported/.test(x.code||'')){await A.signInWithRedirect(fb.auth,p);return}throw x}})
+  .catch(x=>{if(!/popup-closed-by-user|cancelled-popup-request/.test(x.code||''))fail(er(x))});
+ A.getRedirectResult(fb.auth).catch(x=>fail(er(x)));
+ $('#vok').onclick=async()=>{const u=fb.auth.currentUser;await u.reload().catch(()=>{});u.emailVerified?(clearInterval(vt),enter(u)):fail('Почта ещё не подтверждена','verr')};
+ $('#vre').onclick=async()=>{try{await A.sendEmailVerification(fb.auth.currentUser);fail('Письмо отправлено','verr',true)}catch(x){fail(er(x),'verr')}};
+ $('#vout').onclick=$('#out').onclick=()=>A.signOut(fb.auth)}
+boot().catch(e=>{console.error(e);show('auth');fail('Не удалось запустить вход: '+(e.message||e));$('#skip').hidden=false});
 
-
+hyd(document);
