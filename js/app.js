@@ -1,9 +1,9 @@
-import {CFG} from './config.js';
+import {CFG,PROXY} from './config.js';
 import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
-const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:9000,out:3000},ms:{url:'https://api-inference.modelscope.cn/v1',key:K.ms,budget:60000,out:8192}};
+const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:9000,out:3000},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:60000,out:16384}};
 const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
@@ -11,19 +11,29 @@ const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv
 const vv=window.visualViewport,setVh=()=>{document.documentElement.style.setProperty('--vh',(vv?vv.height:innerHeight)+'px');if(vv&&vv.offsetTop)scrollTo(0,0)};
 setVh();vv?.addEventListener('resize',setVh);vv?.addEventListener('scroll',setVh);addEventListener('resize',setVh);addEventListener('orientationchange',()=>setTimeout(setVh,200));
 const ic=n=>`<i class="ic" data-i="${n}"></i>`; // сначала встроенная SVG-иконка; если есть assets/icons/<имя>.png (ваши иконки) — подменяется ею
-const hyd=r=>$$('i[data-i]:not([data-h])',r).forEach(e=>{e.dataset.h=1;const n=e.dataset.i;e.innerHTML=SV[n]||'';const im=new Image();im.onload=()=>e.replaceChildren(im);im.src=`assets/icons/${n}.png`});
+const ICON_NAMES=new Set(['menu','plus','send','attachFile','close','camera','delete','search','copyIcon','download','mic','eye']);
+const iconsOn=new Promise(r=>{const i=new Image();i.onload=()=>r(1);i.onerror=()=>r(0);i.src='assets/icons/menu.png'}); // нет папки с иконками — больше не запрашиваем
+const hyd=r=>$$('i[data-i]:not([data-h])',r).forEach(e=>{e.dataset.h=1;const n=e.dataset.i;e.innerHTML=SV[n]||'';if(!ICON_NAMES.has(n))return;iconsOn.then(ok=>{if(!ok)return;const im=new Image();im.onload=()=>e.replaceChildren(im);im.src=`assets/icons/${n}.png`})});
 new MutationObserver(()=>hyd(document)).observe(document.body,{childList:true,subtree:true});
 $$('[data-ic]').forEach(e=>e.innerHTML=ic(e.dataset.ic));
 const loaded={};const lib=u=>loaded[u]??=new Promise((r,j)=>{const s=document.createElement('script');s.src=u;s.onload=r;s.onerror=()=>j(new Error('не загрузилась библиотека'));document.head.append(s)});
 const CDN='https://cdnjs.cloudflare.com/ajax/libs/';
 
 /* ---------- markdown ---------- */
-marked.use({renderer:{code(c,l){const [lang='',fn='']=(l||'').trim().split(/\s+/);const v=lang&&hljs.getLanguage(lang)?hljs.highlight(c,{language:lang}).value:hljs.highlightAuto(c).value;
- return `<div class="code"><div class="ch"><span>${esc(fn||lang||'code')}</span><span><button data-a="copy">${ic('copyIcon')} Копировать</button><button data-a="dl" data-l="${esc(lang)}" data-n="${esc(fn)}">${ic('download')} Скачать</button>${/html|svg/.test(lang)?'<button data-a="run">▶ Запуск</button>':''}</span></div><pre><code class="hljs">${v}</code></pre></div>`}}});
+const FILES=new Map(),FC={html:['h','HTML'],htm:['h','HTML'],svg:['h','SVG'],pdf:['p','PDF'],zip:['z','ZIP'],docx:['d','DOCX'],xlsx:['x','XLSX'],csv:['x','CSV'],pptx:['o','PPTX'],json:['j','JSON'],py:['c','PY'],js:['c','JS'],css:['c','CSS'],md:['c','MD'],txt:['c','TXT']};
+let NS='x',CNT=0;
+const pl=(n,a)=>n+' '+a[n%10==1&&n%100!=11?0:n%10>=2&&n%10<=4&&(n%100<10||n%100>=20)?1:2];
+const fileCard=(id,name,text,info)=>{const ext=(name.split('.').pop()||'').toLowerCase(),[k,lb]=FC[ext]||['c',ext.slice(0,4).toUpperCase()||'FILE'];
+ return `<div class="fc" data-fid="${esc(id)}"><span class="fi ${k}">${esc(lb)}</span><span class="fn"><b>${esc(name)}</b><small>${esc(info||(text==null?'':pl(text.split('\n').length,['строка','строки','строк'])+' · '+fmt(text.length)))}</small></span><span class="fbt"><button data-a="fopen">Открыть</button><button data-a="fdl">${ic('download')} Скачать</button></span></div>`};
+marked.use({renderer:{code(c,l){const [lang='',fn='']=(l||'').trim().split(/\s+/);
+ if(fn||c.split('\n').length>60){const e2=fn&&fn.includes('.')?fn.split('.').pop().toLowerCase():(EXT[lang]||lang||'txt'),name=fn||`${lang=='html'?'index':'code'}${CNT?'-'+CNT:''}.${e2}`,id=`${NS}.${CNT++}`;FILES.set(id,{name,lang,text:c});return fileCard(id,name,c)}
+ const v=lang&&c.length<20000&&hljs.getLanguage(lang)?hljs.highlight(c,{language:lang}).value:esc(c);
+ return `<div class="code"><div class="ch"><span>${esc(lang||'code')}</span><span><button data-a="copy">${ic('copyIcon')} Копировать</button><button data-a="dl" data-l="${esc(lang)}" data-n="">${ic('download')} Скачать</button>${/html|svg/.test(lang)?'<button data-a="run">▶ Запуск</button>':''}</span></div><pre><code class="hljs">${v}</code></pre></div>`}}});
 const clean=t=>(t||'').replace(/<think>[\s\S]*?(<\/think>|$)/g,'');
 const namedFiles=t=>[...clean(t).matchAll(/```[^\S\n]*\w[\w+#.-]*[^\S\n]+([^\s`]+)[^\n]*\n([\s\S]*?)```/g)].map(m=>[m[1].replace(/^[\/\\]+/,''),m[2]]).filter(x=>/[./]/.test(x[0]));
 const dlBlob=(b,n)=>{const x=document.createElement('a');x.href=URL.createObjectURL(b);x.download=n;x.click();setTimeout(()=>URL.revokeObjectURL(x.href),5000)};
-const md=t=>DOMPurify.sanitize(marked.parse(clean(t)),{ADD_ATTR:['data-a','data-l','data-n','data-i']});
+const md=(t,ns='x')=>{NS=ns;CNT=0;try{return DOMPurify.sanitize(marked.parse(clean(t)),{ADD_ATTR:['data-a','data-l','data-n','data-i','data-fid']})}catch(e){console.error(e);return '<pre>'+esc(t)+'</pre>'}};
+const mdc=new Map(),mdm=(t,ns)=>{const k=ns+'\0'+t;if(!mdc.has(k)){if(mdc.size>60)mdc.delete(mdc.keys().next().value);mdc.set(k,md(t,ns))}return mdc.get(k)};
 const EXT={javascript:'js',js:'js',python:'py',html:'html',css:'css',json:'json',typescript:'ts',bash:'sh',sql:'sql',java:'java',cpp:'cpp',csharp:'cs',markdown:'md',svg:'svg'};
 
 /* ---------- state + storage (Firestore или localStorage) ---------- */
@@ -64,14 +74,15 @@ async function chain(kind,prefMs){
    mq=hasMs?(ds.length?ds:['deepseek-ai/DeepSeek-V4','deepseek-ai/DeepSeek-V3.2']).map(m=>['ms',m]):[];
   o.push(...(kind=='code'||prefMs?[...mq,...gq]:[...gq,...mq]))}
  const seen=new Set();return o.filter(([p,m])=>!/scout/i.test(m)&&!dead.has(m)&&!seen.has(p+m)&&seen.add(p+m))}
-async function stream(p,model,messages,onD,sig){
- const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:c.out};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
+let CUT=false,LAST=null; // CUT — ответ оборван лимитом длины; LAST — модель, давшая ответ
+async function stream(p,model,messages,onD,sig,a=0){
+ CUT=false;const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:Math.floor(c.out/(a?2:1))};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
  const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key},body:JSON.stringify(body)});
  if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;
   e.wait=(+r.headers.get('retry-after')||0)*1000||(w?+w[1]*({ms:1,s:1000,m:60000}[w[2]]):0);throw e}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
  for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
-  for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const d=JSON.parse(l.slice(5)).choices?.[0]?.delta?.content;if(d){got=true;onD(d)}}catch{}}}
+  for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const j=JSON.parse(l.slice(5)).choices?.[0],d=j?.delta?.content;if(j?.finish_reason=='length')CUT=true;if(d){got=true;onD(d)}}catch{}}}
  return got}
 const WHY={429:'лимит запросов',404:'модель недоступна',413:'слишком длинный запрос',401:'ключ не принят',403:'доступ запрещён',400:'запрос отклонён'};
 /* mk(провайдер, попытка) → сообщения; rs() — сброс частично пришедшего ответа перед новой моделью */
@@ -79,7 +90,7 @@ async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
  for(const [p,m] of list){const nm=m.split('/').pop();
   if((cool[m]||0)>Date.now()){errs.push({t:nm+': пауза после лимита',st:429});continue}
   for(let a=0;a<2;a++){
-   try{label('Bart-beta');rs();if(await stream(p,m,mk(p,a),onD,sig))return;errs.push({t:nm+': пустой ответ'});break}
+   try{label('Bart-beta');rs();if(await stream(p,m,mk(p,a),onD,sig,a)){LAST=[p,m];return}errs.push({t:nm+': пустой ответ'});break}
    catch(e){if(e.name=='AbortError')throw e;const st=e.status||0;console.warn('model failed',m,e.message);
     if(st==429){if(a==0&&e.wait&&e.wait<=6000){await sleep(e.wait+250,sig);continue}cool[m]=Date.now()+Math.max(e.wait||0,20000)}
     else if(st==404)dead.add(m);
@@ -92,7 +103,7 @@ const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|из
 async function msImage(prompt,sig){
  const h={Authorization:'Bearer '+P.ms.key,'Content-Type':'application/json'};
  const r=await fetch(P.ms.url+'/images/generations',{method:'POST',signal:sig,headers:{...h,'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt,size:'1024x1024'})});
- if(!r.ok)throw new Error(r.status+': '+(await r.text()).slice(0,160));
+ if(!r.ok)throw new Error('ModelScope '+r.status+': '+(await r.text()).slice(0,140));
  const id=(await r.json()).task_id;if(!id)throw new Error('нет task_id');
  for(let i=0;i<60;i++){await sleep(2000,sig);const t=await(await fetch(P.ms.url+'/tasks/'+id,{signal:sig,headers:{...h,'X-ModelScope-Task-Type':'image_generation'}})).json();
   if(t.task_status=='SUCCEED'&&t.output_images?.[0])return t.output_images[0];if(t.task_status=='FAILED')throw new Error(t.errors?.message||'генерация не удалась')}
@@ -100,20 +111,22 @@ async function msImage(prompt,sig){
 async function draw(am,t,sig){
  am.m='Bart-beta';live(am);let p='';
  try{await tryChain(await chain('text'),()=>[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). If the image must contain written text, keep that text verbatim in quotes. Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{},()=>{p=''});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
- p=p||t;let u=null;
- if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed, fallback',e.message)}
- if(!u){for(let i=0;i<4&&!u;i++){const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
-  if(await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))u=x;else await sleep(8000,sig)}
-  if(!u)throw new Error('Генераторы картинок сейчас не отвечают. Повторите через минуту.')}
- am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
- try{am.img=await up(await(await fetch(u)).blob())}catch{} }
+ p=p||t;let u=null,why='';
+ if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);why=e instanceof TypeError?'браузер не смог достучаться до ModelScope (CORS) — нужен прокси, см. README':e.message}
+ else why='ключ ModelScope не задан';
+ if(u){am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
+  try{am.img=await up(await(await fetch(PROXY?PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(u):u)).blob())}catch{}return}
+ /* запасной вариант: Pollinations (бесплатно 1 картинка в ~45 секунд, при превышении отдаёт картинку-заглушку) */
+ const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
+ if(!await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))throw new Error('Qwen-Image не ответил ('+why+'), запасной генератор тоже.');
+ am.img=x;am.t='Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Рисовал запасной генератор (лимит — 1 картинка в 45 секунд; если вместо рисунка видите «Free limit reached», повторите позже).'}
 const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
-const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении.';
+const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении. ФАЙЛЫ: любой файл (страницу, документ, таблицу, презентацию, скрипт) выдавай блоком ``` с языком и ИМЕНЕМ файла, например ```html index.html — сайт покажет его красивой карточкой «Открыть / Скачать», поэтому не пересказывай содержимое файла в тексте: одна-две строки до или после. Форматы: html, svg, css, js, py, json, csv, md, txt, xml, yaml и другие текстовые; pdf (внутри Markdown или HTML документа), docx (Markdown-подобный текст: # заголовки, - списки), xlsx (внутри CSV), pptx (слайды разделены строкой ---, первая строка слайда — заголовок, дальше пункты через -); несколько именованных блоков в одном ответе сайт соберёт в ZIP. Если просят точный объём (например 2000 строк) — пиши полностью, без заглушек и сокращений вроде «остальное аналогично».';
 /* история под бюджет символов провайдера: свежее — полностью, старое — сокращённо, самое старое — отбрасывается */
 function build(hist,budget){
  const n=hist.length,li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true),cap=(t,k)=>t.length>k?t.slice(0,k)+'\n…[сокращено]':t;
  const items=hist.slice(-16).map((m,j,arr)=>{const i=n-arr.length+j,last=i==n-1;
-  if(m.r!='user')return {role:'assistant',content:cap(clean(m.t),last?budget:2000)||'…'};
+  if(m.r!='user')return {role:'assistant',content:cap(clean(m.t),last?budget:i==n-2?Math.floor(budget*.5):2000)||'…'};
   const fs_=(m.a||[]).filter(a=>a.x);
   let t=(m.t||'')+fs_.map(a=>`\n\n[Файл: ${a.n}]\n`+(last?cap(a.x,Math.floor(budget*.7/fs_.length)):n-i<=3?cap(a.x,1500):'[содержимое опущено — файл был выше в чате]')).join('');
   t=cap(t,last?budget:3000);const im=(m.a||[]).filter(a=>a.k=='img');
@@ -129,7 +142,11 @@ async function run(c,am){
  const img=att.some(a=>a.k=='img'),code=CODE_RE.test(last.t||'')||att.some(a=>a.k=='file'&&CODE_EXT.test(a.n)),big=att.some(a=>a.x&&a.x.length>5000);
  const lab=x=>{am.m=(am.pre?am.pre+' → ':'')+x;live(am)};let desc=null;
  const mk=(p,a)=>{const ms=build(hist,P[p].budget/(a?2:1));return desc==null?ms:ms.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m)};
- const go=k=>chain(k,big).then(l=>tryChain(l,mk,d=>{am.t+=d;live(am)},ctl.signal,lab));
+ const long=/\d{3,}\s*строк|\d{4,}\s*слов|полн\w+\s+(сайт|код|проект)/i.test(last.t||'');
+ const go=async k=>{await tryChain(await chain(k,big||long),mk,d=>{am.t+=d;live(am)},ctl.signal,lab);
+  /* ответ упёрся в лимит длины — просим продолжить с места обрыва (до 6 раз) */
+  for(let i=0;i<6&&CUT&&LAST;i++){const [p,m]=LAST,tail=am.t.slice(-Math.floor(P[p].budget*.5));
+   await tryChain([[p,m]],(pp,a)=>[...mk(pp,a),{role:'assistant',content:tail},{role:'user',content:'Ответ оборвался из-за лимита длины. Продолжи ровно с места обрыва: не повторяй написанное, не начинай новый блок кода и не пиши пояснений — только следующие символы.'}],d=>{am.t+=d;live(am)},ctl.signal,lab)}};
  if(img&&(code||att.some(a=>a.x))){ // два шага: vision «видит», потом код/рассуждение отвечает
   desc='';const vmk=()=>[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...build(hist,9000).slice(-1)[0].content.filter(x=>x.type=='image_url')]}];
   await tryChain(await chain('vision'),vmk,d=>desc+=d,ctl.signal,lab,()=>{desc=''});am.pre=am.m;
@@ -171,11 +188,12 @@ addEventListener('keydown',e=>{if($('#lb').hidden)return;if(e.key=='Escape')lbCl
 let tx0=null;$('#lb').addEventListener('touchstart',e=>tx0=e.touches[0].clientX,{passive:true});
 $('#lb').addEventListener('touchend',e=>{if(tx0==null||LB.l.length<2)return;const d=e.changedTouches[0].clientX-tx0;tx0=null;if(Math.abs(d)>50)lbMove(d>0?-1:1)});
 
+const zipCard=(m,cid,i)=>{const f=namedFiles(m.t);if(f.length<2)return '';const id=cid+'.'+i+'.zip';FILES.set(id,{name:'bart-project.zip',zip:f});return fileCard(id,'bart-project.zip',null,pl(f.length,['файл','файла','файлов'])+' в архиве')};
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
  $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?userMsg(m,i)
-  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${md(m.t)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button>${namedFiles(m.t).length?`<button data-a="zip" data-mi="${i}" class="zipb">${ic('download')} ZIP · ${namedFiles(m.t).length}</button>`:''}<span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
+  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
  $('#msgs').scrollTop=1e9;renderList(CH)}
-let raf=0;function live(am){if(raf)return;raf=requestAnimationFrame(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e)return;$('.md',e).innerHTML=md(am.t)||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9})}
+let raf=0;function live(am){if(raf)return;raf=setTimeout(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e||!S.chat)return;$('.md',e).innerHTML=md(am.t,S.chat.id+'.'+(S.chat.msgs.length-1))||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9},120)}
 async function send(){
  if(S.busy){ctl?.abort();return}
  const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
@@ -199,12 +217,39 @@ $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#in
 $('#msgs').onclick=async e=>{const ph=e.target.closest('[data-lb]');if(ph){lbOpen(S.chat.msgs[ph.dataset.lb].a.filter(a=>a.k=='img'&&!a.f).map(imgSrc),+ph.dataset.j);return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
  if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
- if(a=='zip'){await lib(JSZ);const z=new JSZip();namedFiles(S.chat.msgs[b.dataset.mi].t).forEach(([n,c])=>z.file(n,c));dlBlob(await z.generateAsync({type:'blob'}),'bart-project.zip');return}
+ if(a=='fopen'||a=='fdl'){const f=FILES.get(b.closest('.fc').dataset.fid);if(f)a=='fdl'?fileDl(f):fileOpen(f);return}
  const code=$('code',b.closest('.code')).textContent;
  if(a=='copy'){navigator.clipboard.writeText(code);const h=b.innerHTML;b.textContent='Готово ✓';setTimeout(()=>b.innerHTML=h,1200)}
  if(a=='dl')dlBlob(new Blob([code]),b.dataset.n||'bart-code.'+(EXT[b.dataset.l]||b.dataset.l||'txt'));
  if(a=='run'){$('#modal iframe').srcdoc=code;$('#modal').hidden=false}};
 $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
+
+/* ---------- файлы, которые отправляет Bart: карточка → открыть / скачать ---------- */
+const MIME={html:'text/html',htm:'text/html',svg:'image/svg+xml',json:'application/json',csv:'text/csv',md:'text/markdown',css:'text/css',js:'text/javascript',xml:'text/xml'};
+async function fileBlob(f){const ext=(f.name.split('.').pop()||'').toLowerCase(),t=f.text||'';
+ if(f.zip){await lib(JSZ);const z=new JSZip();f.zip.forEach(([n,c])=>z.file(n,c));return z.generateAsync({type:'blob'})}
+ if(ext=='pdf'){await lib(CDN+'html2pdf.js/0.10.1/html2pdf.bundle.min.js');const h=document.createElement('div');h.style.cssText='position:fixed;left:-9999px;top:0;width:794px;background:#fff;color:#111;padding:32px;font:14px/1.55 Arial,sans-serif';
+  h.innerHTML=DOMPurify.sanitize(/^\s*</.test(t)?t:marked.parse(t));document.body.append(h);
+  try{return await html2pdf().set({margin:10,image:{type:'jpeg',quality:.92},html2canvas:{scale:2,useCORS:true},jsPDF:{unit:'mm',format:'a4'},pagebreak:{mode:['css','legacy']}}).from(h).outputPdf('blob')}finally{h.remove()}}
+ if(ext=='docx'){await lib(JSZ);const z=new JSZip(),x=v=>v.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'),H='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+  const ps=t.split('\n').map(l=>{const h=l.match(/^(#{1,3})\s+(.*)/),b=(h?h[2]:l.replace(/^\s*[-*]\s+/,'• ')).replace(/\*\*(.*?)\*\*/g,'$1');
+   return `<w:p>${h?'<w:pPr><w:spacing w:before="240" w:after="80"/></w:pPr>':''}<w:r>${h?`<w:rPr><w:b/><w:sz w:val="${[0,36,30,26][h[1].length]}"/></w:rPr>`:''}<w:t xml:space="preserve">${x(b)}</w:t></w:r></w:p>`}).join('');
+  z.file('[Content_Types].xml',H+'<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>');
+  z.file('_rels/.rels',H+'<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>');
+  z.file('word/document.xml',H+`<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${ps}</w:body></w:document>`);
+  return z.generateAsync({type:'blob',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'})}
+ if(/^xlsx?$/.test(ext)){await lib(XLS);const w=XLSX.read(t,{type:'string'});return new Blob([XLSX.write(w,{bookType:'xlsx',type:'array'})],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})}
+ if(ext=='pptx'){await lib(CDN+'pptxgenjs/3.12.0/pptxgen.bundle.js');const pp=new PptxGenJS();
+  t.split(/\n-{3,}\s*\n/).forEach(sl=>{const sd=pp.addSlide(),ls=sl.trim().split('\n').filter(Boolean);sd.addText((ls[0]||'').replace(/^#+\s*/,''),{x:.5,y:.3,w:9,h:1,fontSize:30,bold:true});
+   if(ls.length>1)sd.addText(ls.slice(1).map(l=>({text:l.replace(/^\s*[-*]\s+/,''),options:{bullet:/^\s*[-*]\s/.test(l),breakLine:true}})),{x:.5,y:1.4,w:9,h:4,fontSize:18,valign:'top'})});
+  return await pp.write({outputType:'blob'})}
+ return new Blob([ext=='csv'?'\ufeff'+t:t],{type:(MIME[ext]||'text/plain')+';charset=utf-8'})}
+const fileDl=async f=>{try{toast('Готовлю файл…');dlBlob(await fileBlob(f),f.name);$('#toast').hidden=true}catch(e){toast('Не удалось создать файл: '+(e.message||e))}};
+async function fileOpen(f){const ext=(f.name.split('.').pop()||'').toLowerCase();
+ if(/^(html?|svg)$/.test(ext)){$('#modal iframe').srcdoc=f.text;$('#modal').hidden=false;return}
+ if(ext=='pdf'){const w=window.open('','_blank');try{toast('Готовлю PDF…');const b=await fileBlob(f);$('#toast').hidden=true;w?w.location=URL.createObjectURL(b):dlBlob(b,f.name)}catch(e){w?.close();toast('Не удалось создать PDF: '+(e.message||e))}return}
+ if(f.zip||/^(docx|xlsx?|pptx)$/.test(ext))return fileDl(f); // эти форматы в браузере не показать — скачиваем
+ $('#modal iframe').srcdoc=`<pre style="white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Consolas,monospace;padding:16px;margin:0">${esc(f.text)}</pre>`;$('#modal').hidden=false}
 
 /* ---------- файлы и картинки ---------- */
 function chips(){$('#chips').innerHTML=S.files.map((f,i)=>f.k=='img'

@@ -164,3 +164,14 @@ label{display:grid;gap:6px;text-align:left;font-size:13px;color:var(--m)}
 .bd{position:absolute;left:3px;bottom:3px;font-style:normal;font-size:10.5px;line-height:1;background:#000b;color:#fff;border-radius:8px;padding:3px 6px;cursor:pointer}
 .th2{object-fit:cover;padding:0;background:#ffffff2e}
 a.fr{color:inherit;text-decoration:none}
+
+/* карточки файлов от Bart */
+.fc{display:flex;align-items:center;gap:12px;padding:10px 12px;margin:10px 0;background:var(--pn2);border:1px solid var(--b);border-radius:14px;max-width:460px}
+.fi{flex:none;width:46px;height:52px;border-radius:10px;display:grid;place-items:end center;padding-bottom:7px;font-size:11px;font-weight:700;color:#fff;background:#6b7280;position:relative}
+.fi::before{content:"";position:absolute;right:0;top:0;width:14px;height:14px;background:var(--pn2);border-bottom-left-radius:8px}
+.fi.h{background:#e8663d}.fi.p{background:#d93f3f}.fi.z{background:#d9a21b}.fi.d{background:#2f6fd0}.fi.x{background:#1f9d5a}.fi.o{background:#d9582b}.fi.j{background:#7b5fd0}
+.fn{display:grid;min-width:0;flex:1}.fn b{font-weight:600;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fn small{color:var(--m);font-size:12.5px}
+.fbt{display:flex;gap:6px;flex:none}
+.fbt button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--b);background:var(--pn);color:var(--t);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer}
+.fbt button:hover{border-color:var(--a)}.fbt .ic{width:15px;height:15px}
+@media(max-width:520px){.fc{flex-wrap:wrap}.fbt{width:100%}.fbt button{flex:1;justify-content:center}}
