@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">
 <meta name="theme-color" content="#121828">
 <script>try{var t=localStorage.bart_theme;if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <title>Bart — ИИ-ассистент</title>
@@ -12,17 +12,38 @@
 </head>
 <body>
 
+<section id="splash" class="screen"><img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart"></section>
+
 <section id="auth" class="screen" hidden>
-  <div class="card auth-card">
+  <div class="card">
     <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart">
-    <h1>Bart</h1><p class="sub">Твой ИИ-помощник для текста, кода и файлов</p>
-    <div class="auth-switch" role="tablist" aria-label="Аккаунт"><button type="button" data-auth-mode="login" class="on">Войти</button><button type="button" data-auth-mode="register">Создать аккаунт</button></div>
-    <button class="btn google-btn" type="button" id="google"><span class="google-g">G</span> Продолжить с Google</button>
-    <div class="auth-divider"><span>или через почту</span></div>
-    <form id="f-email"><label for="em">Электронная почта</label><input id="em" type="email" placeholder="you@example.com" autocomplete="email" required><label for="pw">Пароль</label><input id="pw" type="password" placeholder="Не менее 6 символов" autocomplete="current-password" minlength="6" required><button class="btn" type="submit" id="auth-submit">Войти</button><button class="text-btn" type="button" id="reset">Забыли пароль?</button></form>
-    <div id="recaptcha"></div><p id="err" class="err" role="alert"></p><p class="auth-legal">Продолжая, вы используете аккаунт для синхронизации чатов.</p>
+    <h1>Bart</h1><p class="sub">ИИ-ассистент: текст, код, фото, файлы, картинки</p>
+    <div class="tabs" role="tablist"><button type="button" data-tab="login" class="on" role="tab">Вход</button><button type="button" data-tab="reg" role="tab">Регистрация</button></div>
+
+    <form id="f-login" novalidate>
+      <label>Почта<input id="li-em" type="email" inputmode="email" placeholder="name@mail.com" autocomplete="username" autocapitalize="off" spellcheck="false"></label>
+      <label>Пароль<span class="pw"><input id="li-pw" type="password" placeholder="Ваш пароль" autocomplete="current-password"><button type="button" class="eye" data-eye aria-label="Показать пароль"></button></span></label>
+      <button type="button" class="lnk" id="reset">Забыли пароль?</button>
+      <button class="btn" type="submit">Войти</button>
+      <p class="swap">Нет аккаунта? <button type="button" class="lnk" data-go="reg">Зарегистрироваться</button></p>
+    </form>
+
+    <form id="f-reg" novalidate hidden>
+      <label>Почта<input id="r-em" type="email" inputmode="email" placeholder="name@mail.com" autocomplete="email" autocapitalize="off" spellcheck="false"></label>
+      <label>Придумайте пароль<span class="pw"><input id="r-pw" type="password" placeholder="От 6 символов" autocomplete="new-password"><button type="button" class="eye" data-eye aria-label="Показать пароль"></button></span></label>
+      <label>Повторите пароль<span class="pw"><input id="r-pw2" type="password" placeholder="Ещё раз" autocomplete="new-password"><button type="button" class="eye" data-eye aria-label="Показать пароль"></button></span></label>
+      <button class="btn" type="submit">Создать аккаунт</button>
+      <p class="swap">Уже есть аккаунт? <button type="button" class="lnk" data-go="login">Войти</button></p>
+    </form>
+
+    <div class="or"><span>или</span></div>
+    <button type="button" class="btn alt gbtn" id="google"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5a5.6 5.6 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.5-5.2 3.5-8.8z"/><path fill="#34A853" d="M12 24c3.2 0 6-1.1 7.9-2.9l-3.9-3c-1.1.7-2.5 1.2-4 1.2-3.1 0-5.7-2.1-6.6-4.9H1.4v3.1A12 12 0 0 0 12 24z"/><path fill="#FBBC05" d="M5.4 14.4a7.2 7.2 0 0 1 0-4.8V6.5H1.4a12 12 0 0 0 0 11z"/><path fill="#EA4335" d="M12 4.8c1.8 0 3.3.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.5l4 3.1C6.3 6.9 8.9 4.8 12 4.8z"/></svg> Продолжить с Google</button>
+    <p id="inapp" class="note" hidden>Вы открыли сайт во встроенном браузере (Telegram, Instagram и т. п.) — Google отсюда не пускает. Откройте ссылку в Chrome или Safari.</p>
+    <p id="err" class="err" role="alert"></p>
+    <button type="button" class="lnk" id="skip" hidden>Продолжить без аккаунта</button>
   </div>
 </section>
+
 <section id="verify" class="screen" hidden>
   <div class="card">
     <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">
@@ -57,7 +78,7 @@
         <button class="icb" id="clip" data-ic="attachFile" title="Файл"></button>
         <button class="icb" id="cam" data-ic="camera" title="Фото"></button>
         <button class="icb" id="mic" data-ic="mic" title="Голосовой ввод"></button>
-        <textarea id="inp" rows="1" placeholder="Напишите сообщение…"></textarea>
+        <textarea id="inp" rows="1" placeholder="Сообщение…"></textarea>
         <button class="send" id="go" data-ic="send"></button>
       </div>
       <input type="file" id="fi" multiple hidden>
@@ -66,12 +87,14 @@
     </footer>
   </main>
 </div>
+<div id="drop" hidden><div>Отпустите файлы, чтобы прикрепить</div></div>
+<div id="lb" hidden><button class="icb" id="lbx" data-ic="close" aria-label="Закрыть"></button><button class="lbn" id="lbp" aria-label="Назад">‹</button><img id="lbi" alt=""><button class="lbn" id="lbn" aria-label="Вперёд">›</button><span id="lbc"></span></div>
 <div id="toast" hidden></div>
 <div id="modal" hidden><button class="icb" id="mx" data-ic="close"></button><iframe sandbox="allow-scripts"></iframe></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
-<script type="module" src="js/app.js?v=20261015-fix2"></script>
+<script type="module" src="js/app.js"></script>
 </body>
 </html>
