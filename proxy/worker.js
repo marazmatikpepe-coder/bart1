@@ -24,14 +24,29 @@ export default {
       try {
         const { prompt } = await req.json();
         const r = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt: String(prompt || '').slice(0, 2000), steps: 6 });
-        return json({ image: r.image });
+        return json({ image: r.image, type: 'jpeg' });
       } catch (e) { return json({ error: String(e && e.message || e) }, 500); }
     }
 
-    // /fetch?u=<url> — скачать готовую картинку (только домены ModelScope / Alibaba OSS)
+    // /ai/edit — правка картинки (img2img, Workers AI): {prompt, image_b64, strength}
+    if (u.pathname === '/ai/edit') {
+      if (!env.AI) return json({ error: 'Не подключена привязка Workers AI' }, 501);
+      try {
+        const { prompt, image_b64, strength } = await req.json();
+        const out = await env.AI.run('@cf/runwayml/stable-diffusion-v1-5-img2img', {
+          prompt: String(prompt || '').slice(0, 1000), image_b64,
+          strength: Math.min(1, Math.max(0.1, +strength || 0.6)), guidance: 7.5, num_steps: 20
+        });
+        const buf = new Uint8Array(await new Response(out).arrayBuffer());
+        let bin = ''; for (let i = 0; i < buf.length; i += 0x8000) bin += String.fromCharCode.apply(null, buf.subarray(i, i + 0x8000));
+        return json({ image: btoa(bin), type: 'png' });
+      } catch (e) { return json({ error: String(e && e.message || e) }, 500); }
+    }
+
+    // /fetch?u=<url> — скачать готовую картинку (только домены ModelScope / Alibaba OSS / imgbb / pollinations)
     if (u.pathname === '/fetch') {
       let t; try { t = new URL(u.searchParams.get('u') || ''); } catch { return json({ error: 'bad url' }, 400); }
-      if (!/(^|\.)(modelscope\.cn|aliyuncs\.com)$/.test(t.hostname)) return json({ error: 'forbidden' }, 403);
+      if (!/(^|\.)(modelscope\.cn|aliyuncs\.com|ibb\.co|pollinations\.ai)$/.test(t.hostname)) return json({ error: 'forbidden' }, 403);
       const r = await fetch(t);
       return new Response(r.body, { status: r.status, headers: { ...CORS, 'Content-Type': r.headers.get('Content-Type') || 'image/png' } });
     }

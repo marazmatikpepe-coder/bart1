@@ -6,7 +6,7 @@ const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
 const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384},or:{url:'https://openrouter.ai/api/v1',key:OR_KEY||'',budget:30000,out:6000}};
 const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
-const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
+const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),edit:sv('M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
 /* реальная высота видимой области (клавиатура на телефоне не обрезает интерфейс) */
 const vv=window.visualViewport,setVh=()=>{document.documentElement.style.setProperty('--vh',(vv?vv.height:innerHeight)+'px');if(vv&&vv.offsetTop)scrollTo(0,0)};
 setVh();vv?.addEventListener('resize',setVh);vv?.addEventListener('scroll',setVh);addEventListener('resize',setVh);addEventListener('orientationchange',()=>setTimeout(setVh,200));
@@ -119,12 +119,12 @@ async function msImage(prompt,sig){
 async function draw(am,t,sig){
  am.m='Bart-beta';live(am);let p='';
  try{await tryChain(await chain('text'),()=>[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). If the image must contain written text, keep that text verbatim in quotes. Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{},()=>{p=''});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
- p=p||t;let u=null,why='';
+ p=p||t;am.pr=p;let u=null,why='';
  if(P.ms.key&&!deadP.has('ms'))try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);if(/ 40[13]:/.test(e.message)){deadP.add('ms');msWhy='ModelScope просит привязать аккаунт Alibaba Cloud (см. README)'}why=deadP.has('ms')?msWhy:e instanceof TypeError?(await fetch(P.ms.url+'/models',{mode:'no-cors',signal:sig}).then(()=>'ModelScope виден, но браузер блокирует ответ (CORS) — нужен прокси, см. README',()=>'ModelScope не открывается из вашей сети — попробуйте VPN или прокси, см. README')):e.message}
  else why=deadP.has('ms')?msWhy:'ключ ModelScope не задан';
  let fl='';
  if(!u&&PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',signal:sig,body:JSON.stringify({prompt:p})});
-  if(!r.ok)throw new Error((await r.text()).slice(0,120));const j=await r.json();if(!j.image)throw new Error('пустой ответ');u='data:image/jpeg;base64,'+j.image;fl='Flux (Cloudflare)'}
+  if(!r.ok)throw new Error((await r.text()).slice(0,120));const j=await r.json();if(!j.image)throw new Error('пустой ответ');u='data:image/'+(j.type||'jpeg')+';base64,'+j.image;fl='Flux (Cloudflare)'}
   catch(e){if(e.name=='AbortError')throw e;why+=' · Workers AI: '+e.message}
  if(u){am.img=u;am.t=(fl?'Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Нарисовал запасной генератор: '+fl+'.':'Готово, сэр. Промпт для генератора:\n\n> '+p);
   try{const src=u.startsWith('data:')||!PROXY?u:PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(u);am.img=await up(await(await fetch(src)).blob())}catch{}return}
@@ -132,6 +132,30 @@ async function draw(am,t,sig){
  const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
  if(!await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))throw new Error('Qwen-Image не ответил ('+why+'), запасной генератор тоже.');
  am.img=x;am.t='Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Рисовал запасной генератор (лимит — 1 картинка в 45 секунд; если вместо рисунка видите «Free limit reached», повторите позже).'}
+/* ---------- редактирование картинки (✎): фото + «что изменить» ---------- */
+async function imgToData(url){let b;try{b=await(await fetch(url)).blob()}catch{if(!PROXY)throw new Error('не удалось загрузить картинку');b=await(await fetch(PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(url))).blob()}
+ return new Promise(r=>{const d=new FileReader();d.onload=()=>r(d.result);d.readAsDataURL(b)})}
+const fitData=(url,max=768)=>new Promise((res,rej)=>{const im=new Image();im.onload=()=>{const k=Math.min(1,max/Math.max(im.width,im.height)),w=Math.max(64,Math.round(im.width*k/8)*8),h=Math.max(64,Math.round(im.height*k/8)*8),c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);res(c.toDataURL('image/jpeg',.92))};im.onerror=()=>rej(new Error('не удалось открыть картинку'));im.src=url});
+async function editFrom(i){const m=S.chat?.msgs[i];if(!m?.img)return;
+ try{toast('Подготавливаю фото…');const data=await imgToData(m.img);$('#toast').hidden=true;
+  S.files=S.files.filter(f=>f.k!='img');S.files.push({n:'image.jpg',k:'img',s:0,ok:true,data,url:m.img,urlP:m.img,prompt:m.pr||''});S.edit=true;chips();$('#inp').focus()}
+ catch(e){toast('Не удалось взять картинку: '+e.message)}}
+async function cfImg(path,body,sig){const r=await fetch(PROXY.replace(/\/$/,'')+path,{method:'POST',signal:sig,body:JSON.stringify(body)}),j=await r.json().catch(()=>({}));
+ if(!r.ok||!j.image)throw new Error(j.error||('Workers AI '+r.status));return 'data:image/'+(j.type||'jpeg')+';base64,'+j.image}
+async function editImg(am,last,sig){
+ am.m='Bart-beta';live(am);const a=(last.a||[]).find(x=>x.k=='img'),req=last.t||'Улучши качество изображения';
+ const dataUrl=DATA.get(a)||await imgToData(a.u);let base=a.pr||'';
+ if(!base){try{await tryChain(await chain('vision'),()=>[{role:'user',content:[{type:'text',text:'Describe this image as one detailed English prompt for an image generator (subject, style, lighting, composition, colors). Output only the prompt.'},{type:'image_url',image_url:{url:dataUrl}}]}],d=>base+=d,sig,()=>{},()=>{base=''});base=clean(base).trim()}catch(e){if(e.name=='AbortError')throw e}}
+ let np='';
+ try{await tryChain(await chain('text'),()=>[{role:'system',content:'You edit image-generation prompts. Given the ORIGINAL prompt and the user EDIT request (may be in Russian), output ONE English prompt describing the final image: keep everything from the original that the edit does not change, and apply the edit. Output only the prompt.'},{role:'user',content:'ORIGINAL: '+(base||'(unknown)')+'\nEDIT: '+req}],d=>np+=d,sig,()=>{},()=>{np=''});np=clean(np).trim()}catch(e){if(e.name=='AbortError')throw e}
+ np=np||((base?base+', ':'')+req);
+ let u=null,how='',why='';
+ if(PROXY){
+  try{u=await cfImg('/ai/edit',{prompt:np,image_b64:(await fitData(dataUrl)).split(',')[1],strength:.6},sig);how='edit'}catch(e){if(e.name=='AbortError')throw e;why=e.message}
+  if(!u)try{u=await cfImg('/ai/image',{prompt:np},sig);how='regen'}catch(e){if(e.name=='AbortError')throw e;why+=' · '+e.message}}
+ if(!u)throw new Error('Не удалось отредактировать фото: '+(why||'прокси не задан (PROXY в js/config.js)'));
+ am.img=u;am.pr=np;am.t='Готово, сэр. Применил правку: «'+req+'».'+(how=='regen'?'\n\n⚠️ Прямое редактирование сейчас недоступно ('+why+'), поэтому я перерисовал картинку заново по обновлённому описанию — детали могут отличаться от оригинала.':'');
+ try{am.img=await up(await(await fetch(u)).blob())}catch{}}
 const REASON_RE=/почему|докаж|реши|задач|алгоритм|анализ|сравни|рассужд|логик|математ|вычисл|оптимиз|архитектур|refactor|debug|prove|solve/i;
 const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
 const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении. ФАЙЛЫ: любой файл (страницу, документ, таблицу, презентацию, скрипт) выдавай блоком ``` с языком и ИМЕНЕМ файла, например ```html index.html — сайт покажет его красивой карточкой «Открыть / Скачать», поэтому не пересказывай содержимое файла в тексте: одна-две строки до или после. Форматы: html, svg, css, js, py, json, csv, md, txt, xml, yaml и другие текстовые; pdf (внутри Markdown или HTML документа), docx (Markdown-подобный текст: # заголовки, - списки), xlsx (внутри CSV), pptx (слайды разделены строкой ---, первая строка слайда — заголовок, дальше пункты через -); несколько именованных блоков в одном ответе сайт соберёт в ZIP. Если просят точный объём (например 2000 строк) — пиши полностью, без заглушек и сокращений вроде «остальное аналогично».';
@@ -151,6 +175,7 @@ function build(hist,budget){
  return [{role:'system',content:SYS},...kept]}
 async function run(c,am){
  const hist=c.msgs.slice(0,-1),last=hist[hist.length-1],att=last.a||[];
+ if(last.e)return editImg(am,last,ctl.signal);
  if(IMG_RE.test(last.t||'')&&!att.some(a=>a.k=='img'))return draw(am,last.t,ctl.signal);
  const img=att.some(a=>a.k=='img'),code=CODE_RE.test(last.t||'')||att.some(a=>a.k=='file'&&CODE_EXT.test(a.n)),big=att.some(a=>a.x&&a.x.length>5000);
  const hard=REASON_RE.test(last.t||'')||att.some(a=>a.x&&a.x.length>8000),lab=(x,mdl)=>{am.m=(am.pre?am.pre+' → ':'')+x;if(mdl)am.via=mdl.split('/').pop();live(am)};let desc=null;
@@ -214,17 +239,24 @@ const near=()=>mbox.scrollHeight-mbox.scrollTop-mbox.clientHeight<90,toBot=()=>{
 mbox.addEventListener('scroll',()=>{stick=near();$('#tobot').hidden=stick||!S.busy},{passive:true});
 $('#tobot').onclick=()=>{stick=true;toBot();$('#tobot').hidden=true};
 const metaTxt=m=>(m.m||'')+(DBG&&m.via?' · '+m.via:'');
+/* копирование: конфетти (0,5 с) → галочка и «Скопировано» → через 2 с снова значок */
+function copyFx(b){if(b.dataset.busy)return;b.dataset.busy=1;const h=b.innerHTML;b.classList.add('okc');
+ b.innerHTML='<svg class="ckm" viewBox="0 0 24 24" width="18" height="18"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="cpt">Скопировано</span>';
+ const cf=document.createElement('span');cf.className='cf';
+ for(let i=0;i<16;i++){const e=document.createElement('i'),an=i/16*6.283+Math.random()*.4,r=24+Math.random()*22;e.style.cssText=`--dx:${Math.cos(an)*r}px;--dy:${Math.sin(an)*r}px;background:hsl(${i*23},85%,60%);animation-delay:${Math.random()*.06}s`;cf.append(e)}
+ b.append(cf);setTimeout(()=>cf.remove(),650);
+ setTimeout(()=>{b.innerHTML=h;b.classList.remove('okc');delete b.dataset.busy},2500)}
 const zipCard=(m,cid,i)=>{const f=namedFiles(m.t);if(f.length<2)return '';const id=cid+'.'+i+'.zip';FILES.set(id,{name:'bart-project.zip',zip:f});return fileCard(id,'bart-project.zip',null,pl(f.length,['файл','файла','файлов'])+' в архиве')};
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
  $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?userMsg(m,i)
-  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(metaTxt(m))}</span></div></div></div>`).join('');
+  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a><button class="edb" data-a="edit" data-mi="${i}">${ic('edit')} Отредактировать</button></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(metaTxt(m))}</span></div></div></div>`).join('');
  if(!(S.busy&&!stick))toBot();renderList(CH)}
 let raf=0;function live(am){if(raf)return;raf=setTimeout(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e||!S.chat)return;$('.md',e).innerHTML=md(am.t,S.chat.id+'.'+(S.chat.msgs.length-1))||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=metaTxt(am);if(stick)toBot()},70)}
 async function send(){
  if(S.busy){ctl?.abort();return}
- const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
+ const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok),ed=!!S.edit&&fl.some(f=>f.k=='img');if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
  S.files=[];chips();$('#inp').value='';grow();
- const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null,f:f.asFile?1:0};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
+ const c=S.chat||(S.chat=newChat()),um={r:'user',t,e:ed?1:0,a:fl.map(f=>{const a={pr:f.prompt||null,k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null,f:f.asFile?1:0};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
  stick=true;c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
  try{await run(c,am);await flush(am)}catch(e){am.t+=QU.get(am)||'';QU.delete(am);if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
@@ -242,7 +274,8 @@ $('#list').onclick=async e=>{const d=e.target.closest('[data-del]');
 $$('.sug button').forEach(b=>b.onclick=()=>{$('#inp').value=b.textContent;$('#inp').focus()});
 $('#msgs').onclick=async e=>{const ph=e.target.closest('[data-lb]');if(ph){lbOpen(S.chat.msgs[ph.dataset.lb].a.filter(a=>a.k=='img'&&!a.f).map(imgSrc),+ph.dataset.j);return}
  const b=e.target.closest('[data-a]');if(!b)return;const a=b.dataset.a;
- if(a=='cp'){navigator.clipboard.writeText($('.md',b.closest('.m')).innerText);return}
+ if(a=='cp'){const i=[...$$('#msgs .m')].indexOf(b.closest('.m')),tx=S.chat.msgs[i]?.t||$('.md',b.closest('.m')).innerText;Promise.resolve(navigator.clipboard?.writeText(tx)).catch(()=>{});copyFx(b);return}
+ if(a=='edit'){editFrom(+b.dataset.mi);return}
  if(a=='fopen'||a=='fdl'){const f=FILES.get(b.closest('.fc').dataset.fid);if(f)a=='fdl'?fileDl(f):fileOpen(f);return}
  const code=$('code',b.closest('.code')).textContent;
  if(a=='copy'){navigator.clipboard.writeText(code);const h=b.innerHTML;b.textContent='Готово ✓';setTimeout(()=>b.innerHTML=h,1200)}
@@ -278,10 +311,10 @@ async function fileOpen(f){const ext=(f.name.split('.').pop()||'').toLowerCase()
  $('#modal iframe').srcdoc=`<pre style="white-space:pre-wrap;word-break:break-word;font:13px/1.5 ui-monospace,Consolas,monospace;padding:16px;margin:0">${esc(f.text)}</pre>`;$('#modal').hidden=false}
 
 /* ---------- файлы и картинки ---------- */
-function chips(){$('#chips').innerHTML=S.files.map((f,i)=>f.k=='img'
- ?`<span class="tn${f.err?' bad':f.ok?'':' ld'}" title="${esc(f.err||f.n)}">${f.data?`<img src="${f.data}" alt="">`:''}${f.err?'<em>!</em>':''}<b data-r="${i}">✕</b>${f.ok?`<i class="bd" data-m="${i}">${f.asFile?'Файл':'Фото'}</i>`:''}</span>`
+function chips(){if(!S.files.some(f=>f.k=='img'))S.edit=false;$('#inp').placeholder=S.edit?'Что изменить на фото?':'Сообщение…';$('#chips').innerHTML=(S.edit?'<span class="chip">✎ Режим редактирования</span>':'')+S.files.map((f,i)=>f.k=='img'
+ ?`<span class="tn${f.err?' bad':f.ok?'':' ld'}" title="${esc(f.err||f.n)}">${f.data?`<img src="${f.data}" alt="">`:''}${f.err?'<em>!</em>':''}<b data-r="${i}">✕</b>${f.ok?`<i class="bd" data-m="${i}">${f.asFile?'Файл':'Фото'}</i><i class="bd ed${S.edit?' on':''}" data-e="${i}" title="Редактировать фото">✎</i>`:''}</span>`
  :`<span class="chip ${f.err?'bad':''}">${ic('attachFile')} ${esc(f.n)} ${f.err?'— '+esc(f.err):f.ok?'':'…'} <b data-r="${i}">✕</b></span>`).join('')}
-$('#chips').onclick=async e=>{const r=e.target.dataset.r,m=e.target.dataset.m;if(r!=null){S.files.splice(r,1);chips()}
+$('#chips').onclick=async e=>{const r=e.target.dataset.r,m=e.target.dataset.m;if(e.target.dataset.e!=null){S.edit=!S.edit;chips();$('#inp').focus();return}if(r!=null){S.files.splice(r,1);chips()}
  if(m!=null){const f=S.files[m];if(!f||!f.ok)return;f.asFile=!f.asFile; // фото (сжатое, в альбоме) ↔ файл (оригинал без сжатия)
   if(f.asFile&&!f.urlF&&f.orig){f.ok=false;chips();f.urlF=await up(f.orig).catch(()=>null);f.ok=true}
   f.url=f.asFile?(f.urlF||f.urlP):f.urlP;chips()}};
