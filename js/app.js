@@ -3,7 +3,7 @@ import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
-const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:9000,out:3000},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:60000,out:16384}};
+const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384}};
 const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
@@ -42,7 +42,7 @@ const DATA=new WeakMap();
 const L=()=>JSON.parse(localStorage.bart_chats||'{}');
 /* документ чата в Firestore ≤1 МБ: тексты файлов сохраняем сокращённо, при необходимости чистим самые старые */
 function compact(c){c=JSON.parse(JSON.stringify(c));const sz=()=>new TextEncoder().encode(JSON.stringify(c)).length;
- c.msgs.forEach(m=>(m.a||[]).forEach(a=>{if(a.x&&a.x.length>3000)a.x=a.x.slice(0,3000)+'\n…[сохранено сокращённо]'}));
+ c.msgs.forEach(m=>{if(m.img&&m.img.startsWith('data:'))m.img=null});c.msgs.forEach(m=>(m.a||[]).forEach(a=>{if(a.x&&a.x.length>3000)a.x=a.x.slice(0,3000)+'\n…[сохранено сокращённо]'}));
  for(let i=0;sz()>850000&&i<c.msgs.length;i++){(c.msgs[i].a||[]).forEach(a=>a.x=null);if(c.msgs[i].t.length>1500)c.msgs[i].t=c.msgs[i].t.slice(0,1500)+'…'}return c}
 const db={
  list(cb){if(fs)return fs.onSnapshot(fs.query(fs.collection(fs.db,'users',uid,'chats'),fs.orderBy('updated','desc')),s=>cb(s.docs.map(d=>d.data())));
@@ -67,7 +67,7 @@ async function chain(kind,prefMs){
   if(hasMs){const v=s.filter(m=>/qwen.*vl/i.test(m)).sort((a,b)=>qver(b)-qver(a)).slice(0,2);(v.length?v:['Qwen/Qwen3-VL-235B-A22B-Instruct']).forEach(m=>o.push(['ms',m]))}}
  else{
   const t=g.filter(m=>!/vl|vision|maverick/i.test(m)),gq=[];
-  for(const re of kind=='code'?[/coder/i,/gpt-oss-120b/i,/qwen.*27b|qwen3-32b/i,/llama-3\.3-70b/i]:[/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen.*27b|qwen3-32b/i])t.filter(m=>re.test(m)).slice(0,1).forEach(m=>gq.push(['groq',m]));
+  for(const re of kind=='code'?[/gpt-oss-120b/i,/coder/i,/qwen.*27b|qwen3-32b/i,/llama-3\.3-70b/i]:[/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen.*27b|qwen3-32b/i])t.filter(m=>re.test(m)).slice(0,1).forEach(m=>gq.push(['groq',m]));
   gq.push(['groq','openai/gpt-oss-120b'],['groq','llama-3.3-70b-versatile']);
   /* DeepSeek на ModelScope: берём самую новую версию из списка (V4 → V3.2 → …) */
   const ds=s.filter(m=>/^deepseek-ai\/deepseek-v\d/i.test(m)&&!/distill/i.test(m)).sort((a,b)=>vnum(b)-vnum(a)).slice(0,2),
@@ -75,29 +75,33 @@ async function chain(kind,prefMs){
   o.push(...(kind=='code'||prefMs?[...mq,...gq]:[...gq,...mq]))}
  const seen=new Set();return o.filter(([p,m])=>!/scout/i.test(m)&&!dead.has(m)&&!seen.has(p+m)&&seen.add(p+m))}
 let CUT=false,LAST=null; // CUT — ответ оборван лимитом длины; LAST — модель, давшая ответ
-async function stream(p,model,messages,onD,sig,a=0){
- CUT=false;const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:Math.floor(c.out/(a?2:1))};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
+async function stream(p,model,messages,onD,sig,k=1){
+ CUT=false;const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:Math.floor(c.out*k)};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
  const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key},body:JSON.stringify(body)});
- if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;
+ if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;const lr=tx.match(/Limit (\d+), Requested (\d+)/i);if(lr){e.lim=+lr[1];e.req=+lr[2]};
   e.wait=(+r.headers.get('retry-after')||0)*1000||(w?+w[1]*({ms:1,s:1000,m:60000}[w[2]]):0);throw e}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
  for(;;){const {done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});const ls=buf.split('\n');buf=ls.pop();
   for(const l of ls){if(!l.startsWith('data:')||l.includes('[DONE]'))continue;try{const j=JSON.parse(l.slice(5)).choices?.[0],d=j?.delta?.content;if(j?.finish_reason=='length')CUT=true;if(d){got=true;onD(d)}}catch{}}}
  return got}
 const WHY={429:'лимит запросов',404:'модель недоступна',413:'слишком длинный запрос',401:'ключ не принят',403:'доступ запрещён',400:'запрос отклонён'};
-/* mk(провайдер, попытка) → сообщения; rs() — сброс частично пришедшего ответа перед новой моделью */
+/* ограничитель частоты запросов: не чаще одного запроса к провайдеру за GAP мс (бесплатные тарифы: Groq ≈30/мин) */
+const GAP={groq:2200,ms:1200},nextAt={groq:0,ms:0};
+async function gate(p,sig){const now=Date.now(),at=Math.max(now,nextAt[p]);nextAt[p]=at+GAP[p];if(at>now)await sleep(at-now,sig)}
+/* mk(провайдер, k) → сообщения (k<1 — сжатый запрос); rs() — сброс частично пришедшего ответа перед новой моделью */
 async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
  for(const [p,m] of list){const nm=m.split('/').pop();
   if((cool[m]||0)>Date.now()){errs.push({t:nm+': пауза после лимита',st:429});continue}
-  for(let a=0;a<2;a++){
-   try{label('Bart-beta');rs();if(await stream(p,m,mk(p,a),onD,sig,a)){LAST=[p,m];return}errs.push({t:nm+': пустой ответ'});break}
+  for(let a=0,k=1;a<2;a++){
+   try{label('Bart-beta',m);rs();await gate(p,sig);if(await stream(p,m,mk(p,k),onD,sig,k)){LAST=[p,m];return}errs.push({t:nm+': пустой ответ'});break}
    catch(e){if(e.name=='AbortError')throw e;const st=e.status||0;console.warn('model failed',m,e.message);
-    if(st==429){if(a==0&&e.wait&&e.wait<=6000){await sleep(e.wait+250,sig);continue}cool[m]=Date.now()+Math.max(e.wait||0,20000)}
+    const fit=e.lim&&e.req?Math.max(.3,e.lim/e.req*.8):.5; // во сколько раз ужать запрос, чтобы влез в лимит токенов
+    if(st==429){if(a==0&&e.wait&&e.wait<=8000){await sleep(e.wait+250,sig);if(e.req>e.lim)k=fit;continue}cool[m]=Date.now()+Math.max(e.wait||0,20000)}
     else if(st==404)dead.add(m);
-    else if((st==413||st==400)&&a==0&&/too large|context|token|length|limit/i.test(e.body||'')){continue}
+    else if((st==413||st==400)&&a==0&&/too large|context|token|length|limit|max_tokens/i.test(e.body||'')){k=fit;continue}
     errs.push({t:nm+': '+(WHY[st]||(st?'ошибка '+st:'нет связи'))+(st?' ('+st+')':''),st});break}}}
  const has=n=>errs.some(e=>e.st==n);
- throw new Error('Bart-beta сейчас не смог ответить — '+errs.map(e=>e.t).join('; ')+'. '+(has(413)||has(400)?'Чат стал слишком длинным — начните новый.':has(429)?'Это временный лимит у провайдера моделей: подождите около минуты и повторите.':'Попробуйте ещё раз; подробности в консоли (F12).'))}
+ throw new Error('Bart-beta сейчас не смог ответить — '+errs.map(e=>e.t).join('; ')+'. '+(has(413)||has(400)?'Запрос слишком велик для моделей даже после сокращения — начните новый чат или прикрепите меньше текста.':has(429)?'Это временный лимит у провайдера моделей: подождите около минуты и повторите.':'Попробуйте ещё раз; подробности в консоли (F12). Кнопка 🔧 в меню проверит модели и прокси.'))}
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
 /* генерация картинок: ModelScope Qwen-Image (асинхронная задача), запасной вариант — Pollinations */
 async function msImage(prompt,sig){
@@ -112,20 +116,25 @@ async function draw(am,t,sig){
  am.m='Bart-beta';live(am);let p='';
  try{await tryChain(await chain('text'),()=>[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). If the image must contain written text, keep that text verbatim in quotes. Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{},()=>{p=''});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
  p=p||t;let u=null,why='';
- if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);why=e instanceof TypeError?'браузер не смог достучаться до ModelScope (CORS) — нужен прокси, см. README':e.message}
+ if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);why=e instanceof TypeError?(await fetch(P.ms.url+'/models',{mode:'no-cors',signal:sig}).then(()=>'ModelScope виден, но браузер блокирует ответ (CORS) — нужен прокси, см. README',()=>'ModelScope не открывается из вашей сети — попробуйте VPN или прокси, см. README')):e.message}
  else why='ключ ModelScope не задан';
- if(u){am.img=u;am.t='Готово, сэр. Промпт для генератора:\n\n> '+p;
-  try{am.img=await up(await(await fetch(PROXY?PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(u):u)).blob())}catch{}return}
+ let fl='';
+ if(!u&&PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',signal:sig,body:JSON.stringify({prompt:p})});
+  if(!r.ok)throw new Error((await r.text()).slice(0,120));const j=await r.json();if(!j.image)throw new Error('пустой ответ');u='data:image/jpeg;base64,'+j.image;fl='Flux (Cloudflare)'}
+  catch(e){if(e.name=='AbortError')throw e;why+=' · Workers AI: '+e.message}
+ if(u){am.img=u;am.t=(fl?'Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Нарисовал запасной генератор: '+fl+'.':'Готово, сэр. Промпт для генератора:\n\n> '+p);
+  try{const src=u.startsWith('data:')||!PROXY?u:PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(u);am.img=await up(await(await fetch(src)).blob())}catch{}return}
  /* запасной вариант: Pollinations (бесплатно 1 картинка в ~45 секунд, при превышении отдаёт картинку-заглушку) */
  const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
  if(!await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))throw new Error('Qwen-Image не ответил ('+why+'), запасной генератор тоже.');
  am.img=x;am.t='Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Рисовал запасной генератор (лимит — 1 картинка в 45 секунд; если вместо рисунка видите «Free limit reached», повторите позже).'}
+const REASON_RE=/почему|докаж|реши|задач|алгоритм|анализ|сравни|рассужд|логик|математ|вычисл|оптимиз|архитектур|refactor|debug|prove|solve/i;
 const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
 const SYS='Ты — Bart-beta (Барт), универсальный ИИ-ассистент. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart-beta. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу, в Markdown. Код — только в блоках ``` с указанием языка. Когда просят создать файлы, проект или ZIP-архив, выдавай каждый файл отдельным блоком, где после языка стоит имя файла или путь, например: ```python app.py или ```html site/index.html. Сайт сам соберёт из них ZIP-кнопкой под ответом, поэтому не говори, что не можешь создавать архивы. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код и др.) ты видишь как текст в сообщении. ФАЙЛЫ: любой файл (страницу, документ, таблицу, презентацию, скрипт) выдавай блоком ``` с языком и ИМЕНЕМ файла, например ```html index.html — сайт покажет его красивой карточкой «Открыть / Скачать», поэтому не пересказывай содержимое файла в тексте: одна-две строки до или после. Форматы: html, svg, css, js, py, json, csv, md, txt, xml, yaml и другие текстовые; pdf (внутри Markdown или HTML документа), docx (Markdown-подобный текст: # заголовки, - списки), xlsx (внутри CSV), pptx (слайды разделены строкой ---, первая строка слайда — заголовок, дальше пункты через -); несколько именованных блоков в одном ответе сайт соберёт в ZIP. Если просят точный объём (например 2000 строк) — пиши полностью, без заглушек и сокращений вроде «остальное аналогично».';
 /* история под бюджет символов провайдера: свежее — полностью, старое — сокращённо, самое старое — отбрасывается */
 function build(hist,budget){
  const n=hist.length,li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true),cap=(t,k)=>t.length>k?t.slice(0,k)+'\n…[сокращено]':t;
- const items=hist.slice(-16).map((m,j,arr)=>{const i=n-arr.length+j,last=i==n-1;
+ const items=hist.slice(-8).map((m,j,arr)=>{const i=n-arr.length+j,last=i==n-1;
   if(m.r!='user')return {role:'assistant',content:cap(clean(m.t),last?budget:i==n-2?Math.floor(budget*.5):2000)||'…'};
   const fs_=(m.a||[]).filter(a=>a.x);
   let t=(m.t||'')+fs_.map(a=>`\n\n[Файл: ${a.n}]\n`+(last?cap(a.x,Math.floor(budget*.7/fs_.length)):n-i<=3?cap(a.x,1500):'[содержимое опущено — файл был выше в чате]')).join('');
@@ -140,18 +149,18 @@ async function run(c,am){
  const hist=c.msgs.slice(0,-1),last=hist[hist.length-1],att=last.a||[];
  if(IMG_RE.test(last.t||'')&&!att.some(a=>a.k=='img'))return draw(am,last.t,ctl.signal);
  const img=att.some(a=>a.k=='img'),code=CODE_RE.test(last.t||'')||att.some(a=>a.k=='file'&&CODE_EXT.test(a.n)),big=att.some(a=>a.x&&a.x.length>5000);
- const lab=x=>{am.m=(am.pre?am.pre+' → ':'')+x;live(am)};let desc=null;
- const mk=(p,a)=>{const ms=build(hist,P[p].budget/(a?2:1));return desc==null?ms:ms.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m)};
+ const hard=REASON_RE.test(last.t||'')||att.some(a=>a.x&&a.x.length>8000),lab=(x,mdl)=>{am.m=(am.pre?am.pre+' → ':'')+x;if(mdl)am.via=mdl.split('/').pop();live(am)};let desc=null;
+ const mk=(p,k=1)=>{const ms=build(hist,P[p].budget*k);return desc==null?ms:ms.map(m=>Array.isArray(m.content)?{role:'user',content:m.content[0].text+'\n\n[Описание изображений от vision-модели]\n'+desc}:m)};
  const long=/\d{3,}\s*строк|\d{4,}\s*слов|полн\w+\s+(сайт|код|проект)/i.test(last.t||'');
- const go=async k=>{await tryChain(await chain(k,big||long),mk,d=>{am.t+=d;live(am)},ctl.signal,lab);
+ const go=async k=>{await tryChain(await chain(k,big||long),mk,d=>put(am,d),ctl.signal,lab);
   /* ответ упёрся в лимит длины — просим продолжить с места обрыва (до 6 раз) */
-  for(let i=0;i<6&&CUT&&LAST;i++){const [p,m]=LAST,tail=am.t.slice(-Math.floor(P[p].budget*.5));
-   await tryChain([[p,m]],(pp,a)=>[...mk(pp,a),{role:'assistant',content:tail},{role:'user',content:'Ответ оборвался из-за лимита длины. Продолжи ровно с места обрыва: не повторяй написанное, не начинай новый блок кода и не пиши пояснений — только следующие символы.'}],d=>{am.t+=d;live(am)},ctl.signal,lab)}};
+  for(let i=0;i<6&&CUT&&LAST;i++){const [p,m]=LAST,tail=(am.t+(QU.get(am)||'')).slice(-Math.floor(P[p].budget*.5));
+   await tryChain([[p,m]],(pp,a)=>[...mk(pp,a),{role:'assistant',content:tail},{role:'user',content:'Ответ оборвался из-за лимита длины. Продолжи ровно с места обрыва: не повторяй написанное, не начинай новый блок кода и не пиши пояснений — только следующие символы.'}],d=>put(am,d),ctl.signal,lab)}};
  if(img&&(code||att.some(a=>a.x))){ // два шага: vision «видит», потом код/рассуждение отвечает
   desc='';const vmk=()=>[{role:'user',content:[{type:'text',text:'Подробно опиши изображение, дословно перепиши весь видимый текст и код.'},...build(hist,9000).slice(-1)[0].content.filter(x=>x.type=='image_url')]}];
   await tryChain(await chain('vision'),vmk,d=>desc+=d,ctl.signal,lab,()=>{desc=''});am.pre=am.m;
-  return go(code?'code':'text')}
- return go(img?'vision':code?'code':'text')}
+  return go(code||hard?'code':'text')}
+ return go(img?'vision':code||hard?'code':'text')}
 
 /* ---------- UI: чат ---------- */
 function renderList(list){CH=list;const q=$('#q').value.toLowerCase();
@@ -188,21 +197,34 @@ addEventListener('keydown',e=>{if($('#lb').hidden)return;if(e.key=='Escape')lbCl
 let tx0=null;$('#lb').addEventListener('touchstart',e=>tx0=e.touches[0].clientX,{passive:true});
 $('#lb').addEventListener('touchend',e=>{if(tx0==null||LB.l.length<2)return;const d=e.changedTouches[0].clientX-tx0;tx0=null;if(Math.abs(d)>50)lbMove(d>0?-1:1)});
 
+/* плавная печать: приходящий текст копится в очереди и выдаётся порциями — скорость растёт, если очередь большая */
+const QU=new WeakMap(),RES=new WeakMap(),TW=new WeakSet();
+function put(am,d){QU.set(am,(QU.get(am)||'')+d);if(!TW.has(am)){TW.add(am);const step=()=>{const q=QU.get(am)||'';
+  if(!q){TW.delete(am);RES.get(am)?.();RES.delete(am);return}
+  let n=Math.min(q.length,Math.max(2,Math.ceil(q.length/14)),500);const c=q.charCodeAt(n-1);if(c>=0xD800&&c<=0xDBFF&&n<q.length)n++;
+  am.t+=q.slice(0,n);QU.set(am,q.slice(n));live(am);setTimeout(step,28)};step()}}
+const flush=am=>new Promise(r=>{if(!(QU.get(am)||'')){r();return}RES.set(am,r)});
+/* умный скролл: следуем за текстом, только если пользователь внизу */
+const DBG=/[?&]debug/.test(location.search),mbox=$('#msgs');let stick=true;
+const near=()=>mbox.scrollHeight-mbox.scrollTop-mbox.clientHeight<90,toBot=()=>{mbox.scrollTop=mbox.scrollHeight};
+mbox.addEventListener('scroll',()=>{stick=near();$('#tobot').hidden=stick||!S.busy},{passive:true});
+$('#tobot').onclick=()=>{stick=true;toBot();$('#tobot').hidden=true};
+const metaTxt=m=>(m.m||'')+(DBG&&m.via?' · '+m.via:'');
 const zipCard=(m,cid,i)=>{const f=namedFiles(m.t);if(f.length<2)return '';const id=cid+'.'+i+'.zip';FILES.set(id,{name:'bart-project.zip',zip:f});return fileCard(id,'bart-project.zip',null,pl(f.length,['файл','файла','файлов'])+' в архиве')};
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('#ttl').textContent=c?.title||'Новый чат';
  $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?userMsg(m,i)
-  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(m.m||'')}</span></div></div></div>`).join('');
- $('#msgs').scrollTop=1e9;renderList(CH)}
-let raf=0;function live(am){if(raf)return;raf=setTimeout(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e||!S.chat)return;$('.md',e).innerHTML=md(am.t,S.chat.id+'.'+(S.chat.msgs.length-1))||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=am.m||'';$('#msgs').scrollTop=1e9},120)}
+  :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(metaTxt(m))}</span></div></div></div>`).join('');
+ if(!(S.busy&&!stick))toBot();renderList(CH)}
+let raf=0;function live(am){if(raf)return;raf=setTimeout(()=>{raf=0;const e=$('#msgs .m.a:last-child');if(!e||!S.chat)return;$('.md',e).innerHTML=md(am.t,S.chat.id+'.'+(S.chat.msgs.length-1))||'<span class="dots"><i></i><i></i><i></i></span>';$('.meta',e).textContent=metaTxt(am);if(stick)toBot()},70)}
 async function send(){
  if(S.busy){ctl?.abort();return}
  const t=$('#inp').value.trim(),fl=S.files.filter(f=>f.ok);if(!t&&!fl.length||S.files.some(f=>!f.ok&&!f.err))return;
  S.files=[];chips();$('#inp').value='';grow();
  const c=S.chat||(S.chat=newChat()),um={r:'user',t,a:fl.map(f=>{const a={k:f.k,n:f.n,u:f.url||null,x:f.text||null,s:f.s||null,f:f.asFile?1:0};if(f.data)DATA.set(a,f.data);return a})},am={r:'assistant',t:'',m:''};
- c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
+ stick=true;c.msgs.push(um,am);if(c.msgs.length==2){c.title=(t||fl[0].n).slice(0,40)}
  renderMsgs();follow(c);S.busy=true;ctl=new AbortController();$('#go').innerHTML=ic('stop');
- try{await run(c,am)}catch(e){if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
- finally{S.busy=false;$('#go').innerHTML=ic('send');c.updated=Date.now();renderMsgs();db.save(c).catch(e=>{console.error(e);toast(e.code=='permission-denied'?'Чат не сохранился в облаке: в Firebase не опубликованы правила Firestore (см. README). Пока он виден только на этом устройстве.':'Не сохранилось: '+e.message)})}}
+ try{await run(c,am);await flush(am)}catch(e){am.t+=QU.get(am)||'';QU.delete(am);if(e.name!='AbortError')am.t+=(am.t?'\n\n':'')+'⚠️ '+e.message}
+ finally{S.busy=false;$('#tobot').hidden=true;$('#go').innerHTML=ic('send');c.updated=Date.now();renderMsgs();db.save(c).catch(e=>{console.error(e);toast(e.code=='permission-denied'?'Чат не сохранился в облаке: в Firebase не опубликованы правила Firestore (см. README). Пока он виден только на этом устройстве.':'Не сохранилось: '+e.message)})}}
 let tt;const toast=m=>{const e=$('#toast');e.textContent=m;e.hidden=false;clearTimeout(tt);tt=setTimeout(()=>e.hidden=true,9000)};
 const grow=()=>{const i=$('#inp');i.style.height='auto';i.style.height=Math.min(i.scrollHeight,180)+'px'};
 $('#inp').oninput=grow;$('#go').onclick=send;
@@ -324,6 +346,23 @@ addEventListener('dragend',dropOff);addEventListener('blur',dropOff);
 addEventListener('drop',e=>{e.preventDefault();const f=[...(e.dataTransfer?.files||[])];dropOff();if(f.length&&appOn())addFiles(f)});
 
 $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme,d=t?t=='dark':matchMedia('(prefers-color-scheme:dark)').matches,n=d?'light':'dark';document.documentElement.dataset.theme=n;localStorage.bart_theme=n};
+/* ---------- диагностика: проверка Groq / прокси / DeepSeek / Qwen-Image ---------- */
+async function diag(){const L=[],show=()=>{$('#modal iframe').srcdoc='<body style="font:13px/1.6 ui-monospace,Consolas,monospace;padding:16px;white-space:pre-wrap;word-break:break-word">'+esc(L.join('\n'))+'</body>';$('#modal').hidden=false};
+ const ok=t=>{L.push('✅ '+t);show()},bad=t=>{L.push('❌ '+t);show()},info=t=>{L.push('ℹ️ '+t);show()};
+ const q=async(p,path,opt={})=>{const r=await fetch(P[p].url+path,{...opt,headers:{Authorization:'Bearer '+P[p].key,'Content-Type':'application/json',...(opt.headers||{})}});return {r,tx:await r.text()}};
+ info('Прокси: '+(PROXY||'не задан — запросы идут напрямую из браузера'));
+ try{const {r,tx}=await q('groq','/chat/completions',{method:'POST',body:JSON.stringify({model:'openai/gpt-oss-120b',messages:[{role:'user',content:'ping'}],max_tokens:20})});r.ok?ok('Groq (gpt-oss-120b) отвечает'):bad('Groq '+r.status+': '+tx.slice(0,160))}catch(e){bad('Groq: '+e.message)}
+ let ids=[];
+ try{const {r,tx}=await q('ms','/models');if(!r.ok)bad('ModelScope /models → '+r.status+': '+tx.slice(0,200));else{ids=(JSON.parse(tx).data||[]).map(x=>x.id);ok('ModelScope доступен, моделей в списке: '+ids.length+'; DeepSeek: '+(ids.filter(i=>/deepseek/i.test(i)).slice(0,8).join(', ')||'нет'))}}
+ catch(e){bad('ModelScope /models: '+e.message+' — запрос не дошёл: проверьте, что воркер обновлён (proxy/worker.js) и адрес в config.js верный')}
+ let got=false;for(const m of [...new Set([...ids.filter(i=>/^deepseek-ai\/deepseek-v\d/i.test(i)).sort((a,b)=>vnum(b)-vnum(a)),'deepseek-ai/DeepSeek-V4','deepseek-ai/DeepSeek-V3.2'])].slice(0,4)){
+  try{const {r,tx}=await q('ms','/chat/completions',{method:'POST',body:JSON.stringify({model:m,messages:[{role:'user',content:'ping'}],max_tokens:16})});if(r.ok){ok('DeepSeek работает: '+m);got=true;break}bad(m+' → '+r.status+': '+tx.slice(0,180))}catch(e){bad(m+': '+e.message)}}
+ if(!got)info('DeepSeek не подключился — для кода и рассуждений сайт использует gpt-oss-120b (Groq).');
+ try{const {r,tx}=await q('ms','/images/generations',{method:'POST',headers:{'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt:'a red apple',size:'1024x1024'})});r.ok?ok('Qwen-Image: задача принята '+tx.slice(0,100)):bad('Qwen-Image → '+r.status+': '+tx.slice(0,200))}catch(e){bad('Qwen-Image: '+e.message)}
+ if(PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',body:JSON.stringify({prompt:'a red apple'})}),j=await r.json();r.ok&&j.image?ok('Запасной генератор Flux (Workers AI) работает'):bad('Workers AI → '+r.status+': '+(j.error||'').slice(0,160))}catch(e){bad('Workers AI: '+e.message)}
+ info('Готово. Если что-то красное — скопируйте этот текст и пришлите разработчику.')}
+$('#diag').onclick=()=>{document.body.classList.remove('side');diag()};
+
 /* ---------- вход: Firebase Auth (почта + Google) ---------- */
 const show=n=>['splash','auth','verify','app'].forEach(x=>$('#'+x).hidden=x!=n);
 const NET='Нет связи с сервером входа. Проверьте интернет; в мобильной сети (особенно с ограничениями) попробуйте Wi-Fi или VPN.';

@@ -1,26 +1,44 @@
-// Cloudflare Worker: прокси для ModelScope (обходит CORS, ключ можно хранить на стороне воркера).
-// Деплой: dash.cloudflare.com → Workers & Pages → Create → Hello World → вставить этот код → Deploy.
-// По желанию: Settings → Variables → Secret MS_KEY = ваш ключ ModelScope (тогда ключ из js/config.js не нужен).
-// Затем адрес воркера (https://имя.аккаунт.workers.dev) вставьте в js/config.js → PROXY.
-const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
-  'Access-Control-Allow-Headers': '*',
-  'Access-Control-Max-Age': '86400'
-};
+// Cloudflare Worker: прокси для ModelScope + генерация картинок через Workers AI (бесплатно, без ключей).
+// Деплой: dash.cloudflare.com → Workers & Pages → ваш воркер → Edit code → вставить этот код → Deploy.
+// Для запасной генерации картинок (Flux): Settings → Bindings → Add → Workers AI → имя переменной: AI.
+// По желанию: Settings → Variables → Secret MS_KEY = ключ ModelScope (тогда ключ из js/config.js не нужен).
+const ALLOW = 'Authorization, Content-Type, X-ModelScope-Async-Mode, X-ModelScope-Task-Type';
+
 export default {
   async fetch(req, env) {
-    if (req.method === 'OPTIONS') return new Response(null, { headers: CORS });
+    // Важно: Access-Control-Allow-Headers: "*" НЕ покрывает Authorization, поэтому перечисляем явно
+    const CORS = {
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': req.headers.get('Access-Control-Request-Headers') || ALLOW,
+      'Access-Control-Max-Age': '86400',
+      'Vary': 'Access-Control-Request-Headers'
+    };
+    if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
     const u = new URL(req.url);
-    // /fetch?u=<url> — скачать готовую картинку (чтобы перезалить на imgbb), только домены ModelScope/Alibaba OSS
+    const json = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+
+    // /ai/image — картинка через Workers AI (Flux schnell)
+    if (u.pathname === '/ai/image') {
+      if (!env.AI) return json({ error: 'Не подключена привязка Workers AI (Bindings → Workers AI → имя AI)' }, 501);
+      try {
+        const { prompt } = await req.json();
+        const r = await env.AI.run('@cf/black-forest-labs/flux-1-schnell', { prompt: String(prompt || '').slice(0, 2000), steps: 6 });
+        return json({ image: r.image });
+      } catch (e) { return json({ error: String(e && e.message || e) }, 500); }
+    }
+
+    // /fetch?u=<url> — скачать готовую картинку (только домены ModelScope / Alibaba OSS)
     if (u.pathname === '/fetch') {
-      const t = new URL(u.searchParams.get('u') || 'about:blank');
-      if (!/(^|\.)(modelscope\.cn|aliyuncs\.com)$/.test(t.hostname)) return new Response('forbidden', { status: 403, headers: CORS });
+      let t; try { t = new URL(u.searchParams.get('u') || ''); } catch { return json({ error: 'bad url' }, 400); }
+      if (!/(^|\.)(modelscope\.cn|aliyuncs\.com)$/.test(t.hostname)) return json({ error: 'forbidden' }, 403);
       const r = await fetch(t);
       return new Response(r.body, { status: r.status, headers: { ...CORS, 'Content-Type': r.headers.get('Content-Type') || 'image/png' } });
     }
+
+    // всё остальное — прозрачный прокси на ModelScope
     const h = new Headers(req.headers);
-    ['host', 'origin', 'referer', 'cf-connecting-ip'].forEach(k => h.delete(k));
+    ['host', 'origin', 'referer', 'cf-connecting-ip', 'x-forwarded-for'].forEach(k => h.delete(k));
     if (env.MS_KEY) h.set('Authorization', 'Bearer ' + env.MS_KEY);
     const r = await fetch('https://api-inference.modelscope.cn' + u.pathname + u.search, {
       method: req.method, headers: h, body: req.method === 'GET' ? undefined : req.body

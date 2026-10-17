@@ -6,4 +6,4 @@ export const CFG={
 };
 
 // Адрес вашего Cloudflare Worker (см. proxy/worker.js). Пусто — запросы к ModelScope идут напрямую из браузера.
-export const PROXY='https://still-glade-b48b.rimekekea3.workers.dev/';
+export const PROXY='https://still-glade-b48b.rimekekea3.workers.dev';

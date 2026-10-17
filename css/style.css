@@ -175,3 +175,7 @@ a.fr{color:inherit;text-decoration:none}
 .fbt button{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--b);background:var(--pn);color:var(--t);border-radius:10px;padding:7px 11px;font-size:13px;cursor:pointer}
 .fbt button:hover{border-color:var(--a)}.fbt .ic{width:15px;height:15px}
 @media(max-width:520px){.fc{flex-wrap:wrap}.fbt{width:100%}.fbt button{flex:1;justify-content:center}}
+
+#msgs{overflow-anchor:none}
+#tobot{position:fixed;right:16px;bottom:calc(112px + env(safe-area-inset-bottom));z-index:6;width:42px;height:42px;border-radius:50%;border:1px solid var(--b);background:var(--pn);color:var(--t);font-size:20px;cursor:pointer;box-shadow:0 4px 14px #0003}
+#diag{font-size:16px;line-height:1}
