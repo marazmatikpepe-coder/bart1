@@ -1,9 +1,9 @@
-import {CFG,PROXY} from './config.js';
+import {CFG,PROXY,OR_KEY} from './config.js';
 import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
-const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384}};
+const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384},or:{url:'https://openrouter.ai/api/v1',key:OR_KEY||'',budget:30000,out:6000}};
 const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
@@ -56,12 +56,12 @@ const newChat=()=>({id:uuid(),title:'Новый чат',updated:Date.now(),msgs:
 function follow(c){unw?.();unw=db.watch(c.id,d=>{if(!S.busy&&S.chat?.id==d.id&&d.updated>S.chat.updated){S.chat=d;renderMsgs()}})}
 
 /* ---------- AI: роутер моделей (Groq + ModelScope) ---------- */
-const mc={},dead=new Set(),cool={};
-const ml=p=>mc[p]??=!P[p].key?Promise.resolve([]):fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i))).catch(()=>[]);
+const mc={},dead=new Set(),cool={},deadP=new Set();let msWhy=''; // deadP — провайдеры, отвечающие 401/403 (не тратим на них запросы)
+const ml=p=>mc[p]??=!P[p].key?Promise.resolve([]):fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i)&&(p!='or'||/:free$/.test(i)))).catch(()=>[]);
 const sleep=(ms,sig)=>new Promise((r,j)=>{const t=setTimeout(r,ms);sig?.addEventListener('abort',()=>{clearTimeout(t);j(new DOMException('','AbortError'))})});
 const vnum=m=>+(m.match(/v(\d+(?:\.\d+)?)/i)?.[1]||0),qver=m=>+(m.match(/qwen(\d+(?:\.\d+)?)/i)?.[1]||0);
 async function chain(kind,prefMs){
- const [g,s]=await Promise.all([ml('groq'),ml('ms')]),o=[],vis=/qwen.*27b|vl|vision|maverick/i,hasMs=!!P.ms.key;
+ const [g,s,orl]=await Promise.all([ml('groq'),ml('ms'),ml('or')]),o=[],vis=/qwen.*27b|vl|vision|maverick/i,hasMs=!!P.ms.key;
  if(kind=='vision'){
   g.filter(m=>vis.test(m)).sort((a,b)=>qver(b)-qver(a)).forEach(m=>o.push(['groq',m]));o.push(['groq','qwen/qwen3.8-27b'],['groq','qwen/qwen3.6-27b']);
   if(hasMs){const v=s.filter(m=>/qwen.*vl/i.test(m)).sort((a,b)=>qver(b)-qver(a)).slice(0,2);(v.length?v:['Qwen/Qwen3-VL-235B-A22B-Instruct']).forEach(m=>o.push(['ms',m]))}}
@@ -72,12 +72,15 @@ async function chain(kind,prefMs){
   /* DeepSeek на ModelScope: берём самую новую версию из списка (V4 → V3.2 → …) */
   const ds=s.filter(m=>/^deepseek-ai\/deepseek-v\d/i.test(m)&&!/distill/i.test(m)).sort((a,b)=>vnum(b)-vnum(a)).slice(0,2),
    mq=hasMs?(ds.length?ds:['deepseek-ai/DeepSeek-V4','deepseek-ai/DeepSeek-V3.2']).map(m=>['ms',m]):[];
-  o.push(...(kind=='code'||prefMs?[...mq,...gq]:[...gq,...mq]))}
- const seen=new Set();return o.filter(([p,m])=>!/scout/i.test(m)&&!dead.has(m)&&!seen.has(p+m)&&seen.add(p+m))}
+  /* OpenRouter (бесплатные :free модели, если задан OR_KEY) */
+  const orq=[];for(const re of [/deepseek/i,/qwen.*coder/i,/gpt-oss-120b/i,/llama-3\.3-70b/i,/qwen3.*(235|80|32)b/i])orl.filter(m=>re.test(m)&&!/vl|vision/i.test(m)).slice(0,1).forEach(m=>orq.push(['or',m]));
+  const hardQ=kind=='code'||prefMs,orDs=orq.filter(x=>/deepseek/i.test(x[1])),orRest=orq.filter(x=>!/deepseek/i.test(x[1]));
+  o.push(...(hardQ?[...mq,...orDs,...gq,...orRest]:[...gq,...mq,...orq]))}
+ const seen=new Set();return o.filter(([p,m])=>!deadP.has(p)&&!/scout/i.test(m)&&!dead.has(m)&&!seen.has(p+m)&&seen.add(p+m))}
 let CUT=false,LAST=null; // CUT — ответ оборван лимитом длины; LAST — модель, давшая ответ
 async function stream(p,model,messages,onD,sig,k=1){
  CUT=false;const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:Math.floor(c.out*k)};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
- const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key},body:JSON.stringify(body)});
+ const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key,...(p=='or'?{'HTTP-Referer':location.origin,'X-Title':'Bart'}:{})},body:JSON.stringify(body)});
  if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;const lr=tx.match(/Limit (\d+), Requested (\d+)/i);if(lr){e.lim=+lr[1];e.req=+lr[2]};
   e.wait=(+r.headers.get('retry-after')||0)*1000||(w?+w[1]*({ms:1,s:1000,m:60000}[w[2]]):0);throw e}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
@@ -86,11 +89,11 @@ async function stream(p,model,messages,onD,sig,k=1){
  return got}
 const WHY={429:'лимит запросов',404:'модель недоступна',413:'слишком длинный запрос',401:'ключ не принят',403:'доступ запрещён',400:'запрос отклонён'};
 /* ограничитель частоты запросов: не чаще одного запроса к провайдеру за GAP мс (бесплатные тарифы: Groq ≈30/мин) */
-const GAP={groq:2200,ms:1200},nextAt={groq:0,ms:0};
+const GAP={groq:2200,ms:1200,or:3200},nextAt={groq:0,ms:0,or:0};
 async function gate(p,sig){const now=Date.now(),at=Math.max(now,nextAt[p]);nextAt[p]=at+GAP[p];if(at>now)await sleep(at-now,sig)}
 /* mk(провайдер, k) → сообщения (k<1 — сжатый запрос); rs() — сброс частично пришедшего ответа перед новой моделью */
 async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
- for(const [p,m] of list){const nm=m.split('/').pop();
+ for(const [p,m] of list){const nm=m.split('/').pop();if(deadP.has(p))continue;
   if((cool[m]||0)>Date.now()){errs.push({t:nm+': пауза после лимита',st:429});continue}
   for(let a=0,k=1;a<2;a++){
    try{label('Bart-beta',m);rs();await gate(p,sig);if(await stream(p,m,mk(p,k),onD,sig,k)){LAST=[p,m];return}errs.push({t:nm+': пустой ответ'});break}
@@ -98,6 +101,7 @@ async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
     const fit=e.lim&&e.req?Math.max(.3,e.lim/e.req*.8):.5; // во сколько раз ужать запрос, чтобы влез в лимит токенов
     if(st==429){if(a==0&&e.wait&&e.wait<=8000){await sleep(e.wait+250,sig);if(e.req>e.lim)k=fit;continue}cool[m]=Date.now()+Math.max(e.wait||0,20000)}
     else if(st==404)dead.add(m);
+    else if(st==401||st==403)deadP.add(p);
     else if((st==413||st==400)&&a==0&&/too large|context|token|length|limit|max_tokens/i.test(e.body||'')){k=fit;continue}
     errs.push({t:nm+': '+(WHY[st]||(st?'ошибка '+st:'нет связи'))+(st?' ('+st+')':''),st});break}}}
  const has=n=>errs.some(e=>e.st==n);
@@ -116,8 +120,8 @@ async function draw(am,t,sig){
  am.m='Bart-beta';live(am);let p='';
  try{await tryChain(await chain('text'),()=>[{role:'system',content:'Convert the user request into one detailed English prompt for an image generator (subject, style, lighting, composition). If the image must contain written text, keep that text verbatim in quotes. Output only the prompt text.'},{role:'user',content:t}],d=>p+=d,sig,()=>{},()=>{p=''});p=clean(p).trim()}catch(e){if(e.name=='AbortError')throw e}
  p=p||t;let u=null,why='';
- if(P.ms.key)try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);why=e instanceof TypeError?(await fetch(P.ms.url+'/models',{mode:'no-cors',signal:sig}).then(()=>'ModelScope виден, но браузер блокирует ответ (CORS) — нужен прокси, см. README',()=>'ModelScope не открывается из вашей сети — попробуйте VPN или прокси, см. README')):e.message}
- else why='ключ ModelScope не задан';
+ if(P.ms.key&&!deadP.has('ms'))try{u=await msImage(p,sig)}catch(e){if(e.name=='AbortError')throw e;console.warn('ModelScope image failed',e);if(/ 40[13]:/.test(e.message)){deadP.add('ms');msWhy='ModelScope просит привязать аккаунт Alibaba Cloud (см. README)'}why=deadP.has('ms')?msWhy:e instanceof TypeError?(await fetch(P.ms.url+'/models',{mode:'no-cors',signal:sig}).then(()=>'ModelScope виден, но браузер блокирует ответ (CORS) — нужен прокси, см. README',()=>'ModelScope не открывается из вашей сети — попробуйте VPN или прокси, см. README')):e.message}
+ else why=deadP.has('ms')?msWhy:'ключ ModelScope не задан';
  let fl='';
  if(!u&&PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',signal:sig,body:JSON.stringify({prompt:p})});
   if(!r.ok)throw new Error((await r.text()).slice(0,120));const j=await r.json();if(!j.image)throw new Error('пустой ответ');u='data:image/jpeg;base64,'+j.image;fl='Flux (Cloudflare)'}
@@ -360,6 +364,8 @@ async function diag(){const L=[],show=()=>{$('#modal iframe').srcdoc='<body styl
  if(!got)info('DeepSeek не подключился — для кода и рассуждений сайт использует gpt-oss-120b (Groq).');
  try{const {r,tx}=await q('ms','/images/generations',{method:'POST',headers:{'X-ModelScope-Async-Mode':'true'},body:JSON.stringify({model:'Qwen/Qwen-Image',prompt:'a red apple',size:'1024x1024'})});r.ok?ok('Qwen-Image: задача принята '+tx.slice(0,100)):bad('Qwen-Image → '+r.status+': '+tx.slice(0,200))}catch(e){bad('Qwen-Image: '+e.message)}
  if(PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',body:JSON.stringify({prompt:'a red apple'})}),j=await r.json();r.ok&&j.image?ok('Запасной генератор Flux (Workers AI) работает'):bad('Workers AI → '+r.status+': '+(j.error||'').slice(0,160))}catch(e){bad('Workers AI: '+e.message)}
+ if(P.or.key)try{const {r,tx}=await q('or','/models');if(!r.ok)bad('OpenRouter → '+r.status+': '+tx.slice(0,160));else{const f=(JSON.parse(tx).data||[]).map(x=>x.id).filter(i=>/:free$/.test(i));ok('OpenRouter доступен, бесплатных моделей: '+f.length+'; DeepSeek: '+(f.filter(i=>/deepseek/i.test(i)).slice(0,4).join(', ')||'нет'))}}catch(e){bad('OpenRouter: '+e.message)}
+ else info('OpenRouter не подключён (необязательно): ключ вписывается в js/config.js → OR_KEY.')
  info('Готово. Если что-то красное — скопируйте этот текст и пришлите разработчику.')}
 $('#diag').onclick=()=>{document.body.classList.remove('side');diag()};
 
