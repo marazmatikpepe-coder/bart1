@@ -1,4 +1,4 @@
-// Cloudflare Worker: прокси для ModelScope + генерация картинок через Workers AI (бесплатно, без ключей).
+// Cloudflare Worker: прокси для Groq / OpenRouter / imgbb / ModelScope + картинки через Workers AI (бесплатно, без ключей).
 // Деплой: dash.cloudflare.com → Workers & Pages → ваш воркер → Edit code → вставить этот код → Deploy.
 // Для запасной генерации картинок (Flux): Settings → Bindings → Add → Workers AI → имя переменной: AI.
 // По желанию: Settings → Variables → Secret MS_KEY = ключ ModelScope (тогда ключ из js/config.js не нужен).
@@ -49,6 +49,25 @@ export default {
       if (!/(^|\.)(modelscope\.cn|aliyuncs\.com|ibb\.co|pollinations\.ai)$/.test(t.hostname)) return json({ error: 'forbidden' }, 403);
       const r = await fetch(t);
       return new Response(r.body, { status: r.status, headers: { ...CORS, 'Content-Type': r.headers.get('Content-Type') || 'image/png' } });
+    }
+
+    // /groq/…, /or/… (OpenRouter), /imgbb/… — прокси к API, закрытым в ряде стран.
+    // Запрос уходит с серверов Cloudflare, поэтому VPN пользователю не нужен.
+    // Ключи можно хранить здесь (Settings → Variables → Secrets: GROQ_KEY, OR_KEY, IMGBB_KEY, MS_KEY) —
+    // тогда в js/config.js их держать не нужно.
+    const pm = u.pathname.match(/^\/(groq|or|imgbb)(\/.*)?$/);
+    if (pm) {
+      const base = { groq: 'https://api.groq.com', or: 'https://openrouter.ai', imgbb: 'https://api.imgbb.com' }[pm[1]];
+      const h = new Headers(req.headers);
+      ['host', 'origin', 'referer', 'cf-connecting-ip', 'x-forwarded-for'].forEach(k => h.delete(k));
+      const secret = { groq: env.GROQ_KEY, or: env.OR_KEY }[pm[1]];
+      if (secret) h.set('Authorization', 'Bearer ' + secret);
+      let search = u.search;
+      if (pm[1] === 'imgbb' && env.IMGBB_KEY && !u.searchParams.get('key')) search = '?key=' + env.IMGBB_KEY;
+      const r = await fetch(base + (pm[2] || '/') + search, { method: req.method, headers: h, body: req.method === 'GET' ? undefined : req.body });
+      const rh = new Headers(r.headers);
+      Object.entries(CORS).forEach(([k, v]) => rh.set(k, v));
+      return new Response(r.body, { status: r.status, headers: rh });
     }
 
     // всё остальное — прозрачный прокси на ModelScope

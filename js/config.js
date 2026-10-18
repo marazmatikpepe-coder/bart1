@@ -9,4 +9,4 @@ export const CFG={
 export const PROXY='https://still-glade-b48b.rimekekea3.workers.dev';
 
 // Необязательно: ключ OpenRouter (openrouter.ai → Keys). Подключает бесплатные модели :free как запасные для кода и рассуждений.
-export const OR_KEY='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';
+export const OR_KEY='';

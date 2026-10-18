@@ -3,7 +3,8 @@ import {FB} from './firebase-config.js';
 const $=(s,e=document)=>e.querySelector(s),$$=(s,e=document)=>[...e.querySelectorAll(s)];
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const K=Object.fromEntries(Object.entries(CFG).map(([k,v])=>[k,atob(v)]));
-const P={groq:{url:'https://api.groq.com/openai/v1',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384},or:{url:'https://openrouter.ai/api/v1',key:OR_KEY||'',budget:30000,out:6000}};
+const PX=PROXY?PROXY.replace(/\/$/,''):'';
+const P={groq:{url:PX?PX+'/groq/openai/v1':'https://api.groq.com/openai/v1',alt:PX?'https://api.groq.com/openai/v1':'',key:K.groq,budget:12000,out:2500},ms:{url:(PROXY?PROXY.replace(/\/$/,''):'https://api-inference.modelscope.cn')+'/v1',key:K.ms,budget:80000,out:16384},or:{url:PX?PX+'/or/api/v1':'https://openrouter.ai/api/v1',alt:PX?'https://openrouter.ai/api/v1':'',key:OR_KEY||'',budget:30000,out:6000}};
 const MAX=30000,LOGO='https://i.ibb.co/1pCX2Nr/image-Photoroom.png',G='https://www.gstatic.com/firebasejs/10.12.2/';
 const sv=(d,f)=>`<svg viewBox="0 0 24 24" fill="${f?'currentColor':'none'}" stroke="${f?'none':'currentColor'}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="${d}"/></svg>`;
 const SV={menu:sv('M4 6h16M4 12h16M4 18h16'),plus:sv('M12 5v14M5 12h14'),send:sv('M12 19V5M5 12l7-7 7 7'),attachFile:sv('M21 11.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l8.6-8.6a3.7 3.7 0 0 1 5.2 5.2l-8.6 8.6a1.8 1.8 0 0 1-2.6-2.6l8-8'),close:sv('M6 6l12 12M18 6L6 18'),camera:sv('M4 8h3l2-3h6l2 3h3v11H4zM12 17a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z'),delete:sv('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3'),search:sv('M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14zM21 21l-5-5'),copyIcon:sv('M9 9h11v11H9zM5 15V4h11'),download:sv('M12 4v11M7 11l5 5 5-5M5 20h14'),stop:sv('M7 7h10v10H7z',1),logout:sv('M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10'),mic:sv('M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3'),theme:sv('M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z'),eye:sv('M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12zM12 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6z'),edit:sv('M4 20h4L19 9l-4-4L4 16v4zM13.5 6.5l4 4'),eyeOff:sv('M3 3l18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3.2 3.9M6.6 7.6A16.6 16.6 0 0 0 2 12s3.5 7 10 7a9.6 9.6 0 0 0 4-.9M9.9 9.9a3 3 0 0 0 4.2 4.2')};
@@ -56,8 +57,12 @@ const newChat=()=>({id:uuid(),title:'Новый чат',updated:Date.now(),msgs:
 function follow(c){unw?.();unw=db.watch(c.id,d=>{if(!S.busy&&S.chat?.id==d.id&&d.updated>S.chat.updated){S.chat=d;renderMsgs()}})}
 
 /* ---------- AI: роутер моделей (Groq + ModelScope) ---------- */
+/* запрос к провайдеру: сначала через прокси (работает там, где Groq и др. закрыты), при сбое прокси — напрямую */
+async function call(p,path,opt={}){const c=P[p],h={...(opt.headers||{}),...(c.key?{Authorization:'Bearer '+c.key}:{})},go=u=>fetch(u+path,{...opt,headers:h});
+ if(!c.alt)return go(c.url);
+ try{const r=await go(c.url);if(r.status!==404&&r.status<502)return r;return await go(c.alt).catch(()=>r)}catch(e){if(e.name=='AbortError')throw e;return go(c.alt)}}
 const mc={},dead=new Set(),cool={},deadP=new Set();let msWhy=''; // deadP — провайдеры, отвечающие 401/403 (не тратим на них запросы)
-const ml=p=>mc[p]??=!P[p].key?Promise.resolve([]):fetch(P[p].url+'/models',{headers:{Authorization:'Bearer '+P[p].key}}).then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i)&&(p!='or'||/:free$/.test(i)))).catch(()=>[]);
+const ml=p=>mc[p]??=!P[p].key&&!(PROXY&&p!='or')?Promise.resolve([]):call(p,'/models').then(r=>r.json()).then(j=>(j.data||[]).map(x=>x.id).filter(i=>!/whisper|guard|orpheus|tts|embed|safeguard|playai|compound/i.test(i)&&(p!='or'||/:free$/.test(i)))).catch(()=>[]);
 const sleep=(ms,sig)=>new Promise((r,j)=>{const t=setTimeout(r,ms);sig?.addEventListener('abort',()=>{clearTimeout(t);j(new DOMException('','AbortError'))})});
 const vnum=m=>+(m.match(/v(\d+(?:\.\d+)?)/i)?.[1]||0),qver=m=>+(m.match(/qwen(\d+(?:\.\d+)?)/i)?.[1]||0);
 async function chain(kind,prefMs){
@@ -80,7 +85,7 @@ async function chain(kind,prefMs){
 let CUT=false,LAST=null; // CUT — ответ оборван лимитом длины; LAST — модель, давшая ответ
 async function stream(p,model,messages,onD,sig,k=1){
  CUT=false;const c=P[p],body={model,messages,stream:true,temperature:.6,max_tokens:Math.floor(c.out*k)};if(p=='groq'&&/gpt-oss/.test(model))body.reasoning_effort='medium';
- const r=await fetch(c.url+'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',Authorization:'Bearer '+c.key,...(p=='or'?{'HTTP-Referer':location.origin,'X-Title':'Bart'}:{})},body:JSON.stringify(body)});
+ const r=await call(p,'/chat/completions',{method:'POST',signal:sig,headers:{'Content-Type':'application/json',...(p=='or'?{'HTTP-Referer':location.origin,'X-Title':'Bart'}:{})},body:JSON.stringify(body)});
  if(!r.ok){const tx=await r.text(),w=tx.match(/try again in ([\d.]+)\s*(ms|s|m)\b/i),e=new Error(r.status+': '+tx.slice(0,200));e.status=r.status;e.body=tx;const lr=tx.match(/Limit (\d+), Requested (\d+)/i);if(lr){e.lim=+lr[1];e.req=+lr[2]};
   e.wait=(+r.headers.get('retry-after')||0)*1000||(w?+w[1]*({ms:1,s:1000,m:60000}[w[2]]):0);throw e}
  const rd=r.body.getReader(),dec=new TextDecoder();let buf='',got=false;
@@ -104,8 +109,8 @@ async function tryChain(list,mk,onD,sig,label,rs=()=>{}){const errs=[];
     else if(st==401||st==403)deadP.add(p);
     else if((st==413||st==400)&&a==0&&/too large|context|token|length|limit|max_tokens/i.test(e.body||'')){k=fit;continue}
     errs.push({t:nm+': '+(WHY[st]||(st?'ошибка '+st:'нет связи'))+(st?' ('+st+')':''),st});break}}}
- const has=n=>errs.some(e=>e.st==n);
- throw new Error('Bart-beta сейчас не смог ответить — '+errs.map(e=>e.t).join('; ')+'. '+(has(413)||has(400)?'Запрос слишком велик для моделей даже после сокращения — начните новый чат или прикрепите меньше текста.':has(429)?'Это временный лимит у провайдера моделей: подождите около минуты и повторите.':'Попробуйте ещё раз; подробности в консоли (F12). Кнопка 🔧 в меню проверит модели и прокси.'))}
+ const has=n=>errs.some(e=>e.st==n);console.warn('Все модели недоступны:',errs.map(e=>e.t).join('; '));
+ throw new Error(DBG?'Bart не смог ответить — '+errs.map(e=>e.t).join('; '):has(413)||has(400)?'Запрос слишком большой — начните новый чат или прикрепите меньше текста.':has(429)?'Сейчас очень много запросов. Подождите минуту и повторите.':'Не получилось ответить. Попробуйте ещё раз.')}
 const IMG_RE=/нарису|сгенерир\w*\s+(?:\S+\s+)?(?:картин|изображ|фот|арт|логотип|иллюстр)|созда\w+\s+(?:\S+\s+)?(?:картин|изображ|арт|логотип|иллюстр)|нарисов|(?:generate|create|draw)\s+(?:an?\s+)?(?:image|picture|logo|art)|\bdraw\b/i;
 /* генерация картинок: ModelScope Qwen-Image (асинхронная задача), запасной вариант — Pollinations */
 async function msImage(prompt,sig){
@@ -126,12 +131,12 @@ async function draw(am,t,sig){
  if(!u&&PROXY)try{const r=await fetch(PROXY.replace(/\/$/,'')+'/ai/image',{method:'POST',signal:sig,body:JSON.stringify({prompt:p})});
   if(!r.ok)throw new Error((await r.text()).slice(0,120));const j=await r.json();if(!j.image)throw new Error('пустой ответ');u='data:image/'+(j.type||'jpeg')+';base64,'+j.image;fl='Flux (Cloudflare)'}
   catch(e){if(e.name=='AbortError')throw e;why+=' · Workers AI: '+e.message}
- if(u){am.img=u;am.t=(fl?'Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Нарисовал запасной генератор: '+fl+'.':'Готово, сэр. Промпт для генератора:\n\n> '+p);
+ if(u){am.img=u;am.t='Готово. Промпт для генератора:\n\n> '+p;
   try{const src=u.startsWith('data:')||!PROXY?u:PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(u);am.img=await up(await(await fetch(src)).blob())}catch{}return}
  /* запасной вариант: Pollinations (бесплатно 1 картинка в ~45 секунд, при превышении отдаёт картинку-заглушку) */
  const x=`https://image.pollinations.ai/prompt/${encodeURIComponent(p.slice(0,900))}?width=1024&height=1024&model=flux&nologo=true&seed=${Math.floor(Math.random()*1e6)}`;
- if(!await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x}))throw new Error('Qwen-Image не ответил ('+why+'), запасной генератор тоже.');
- am.img=x;am.t='Промпт для генератора:\n\n> '+p+'\n\n⚠️ Qwen-Image сейчас недоступен: '+why+'. Рисовал запасной генератор (лимит — 1 картинка в 45 секунд; если вместо рисунка видите «Free limit reached», повторите позже).'}
+ if(!await new Promise(r=>{const im=new Image();im.onload=()=>r(1);im.onerror=()=>r(0);im.src=x})){console.warn('image generators failed:',why);throw new Error('Не удалось нарисовать картинку. Попробуйте ещё раз.')}
+ am.img=x;am.t='Готово. Промпт для генератора:\n\n> '+p}
 /* ---------- удаление фона: плоский фон — мгновенно в браузере, сложный — нейросеть (imgly, ~40 МБ при первом запуске) ---------- */
 const BG_RE=/(удал|убер|убир|убр|сотр|стер|вырез|отдел)\S*\s+(?:\S+\s+){0,3}?(фон|задн\S*\s+план)|без\s+фона|прозрачн\S*\s+фон|remove\s+(?:the\s+)?background|cut\s*out/i;
 const loadImg=u=>new Promise((res,rej)=>{const i=new Image();i.crossOrigin='anonymous';i.onload=()=>res(i);i.onerror=()=>rej(new Error('не удалось открыть картинку'));i.src=u});
@@ -154,8 +159,8 @@ async function mlBg(src,cb){cb('Загружаю нейросеть для уд�
 async function removeBgFlow(am,a){am.m='Bart-beta';am.t='Удаляю фон…';live(am);
  const src=DATA.get(a)||await imgToData(a.u);let out=null;
  try{out=flatBg(await loadImg(src))}catch(e){console.warn('flatBg',e)}
- if(!out){try{out=await mlBg(src,t=>{am.t=t;live(am)})}catch(e){console.warn(e);throw new Error('Не удалось удалить фон: нейросеть не загрузилась ('+(e.message||e)+'). Нужен доступ к cdn.jsdelivr.net и staticimgly.com.')}}
- am.img=out;am.t='Готово, сэр — фон удалён, картинка в PNG с прозрачностью.';
+ if(!out){try{out=await mlBg(src,t=>{am.t=t;live(am)})}catch(e){console.warn(e);throw new Error('Не удалось удалить фон с этого фото. Попробуйте другое изображение.')}}
+ am.img=out;am.t='Готово — фон удалён, картинка в PNG с прозрачностью.';
  try{am.img=await up(await(await fetch(out)).blob())}catch{}}
 /* ---------- редактирование картинки (✎): фото + «что изменить» ---------- */
 async function imgToData(url){let b;try{b=await(await fetch(url)).blob()}catch{if(!PROXY)throw new Error('не удалось загрузить картинку');b=await(await fetch(PROXY.replace(/\/$/,'')+'/fetch?u='+encodeURIComponent(url))).blob()}
@@ -178,12 +183,12 @@ async function editImg(am,last,sig){
  if(PROXY){
   try{u=await cfImg('/ai/edit',{prompt:np,image_b64:(await fitData(dataUrl)).split(',')[1],strength:.6},sig);how='edit'}catch(e){if(e.name=='AbortError')throw e;why=e.message}
   if(!u)try{u=await cfImg('/ai/image',{prompt:np},sig);how='regen'}catch(e){if(e.name=='AbortError')throw e;why+=' · '+e.message}}
- if(!u)throw new Error('Не удалось отредактировать фото: '+(why||'прокси не задан (PROXY в js/config.js)'));
- am.img=u;am.pr=np;am.t='Готово, сэр. Применил правку: «'+req+'».'+(how=='regen'?'\n\n⚠️ Прямое редактирование сейчас недоступно ('+why+'), поэтому я перерисовал картинку заново по обновлённому описанию — детали могут отличаться от оригинала.':'');
+ if(!u){console.warn('edit failed:',why);throw new Error('Не удалось отредактировать фото. Попробуйте ещё раз.')}
+ am.img=u;am.pr=np;am.t='Готово. Применил правку: «'+req+'».';
  try{am.img=await up(await(await fetch(u)).blob())}catch{}}
 const REASON_RE=/почему|докаж|реши|задач|алгоритм|анализ|сравни|рассужд|логик|математ|вычисл|оптимиз|архитектур|refactor|debug|prove|solve/i;
 const CODE_RE=/zip|архив|проект|сайт|код|скрипт|функци|баг|ошибк|програм|python|javascript|html|css|sql|react|json|```|api\b|class\b|def\b|верстк/i,CODE_EXT=/\.(py|js|ts|jsx|tsx|html|css|json|java|c|cpp|cs|go|rs|php|sql|sh|yml|yaml)$/i;
-const SYS='Ты — Bart (Барт), универсальный ИИ-ассистент: по возможностям и манере общения как Claude — внимательный, тёплый, точный. Никогда не называй модели, компании и сервисы, на которых ты основан; если спросят — ты Bart. Обращайся к пользователю «сэр». Отвечай на языке пользователя (по умолчанию по-русски), по делу и без воды; Markdown и таблицы — когда они помогают. Ты умеешь всё: писать и чинить код на любых языках, объяснять, переводить, анализировать, писать тексты, решать задачи по шагам, разбирать файлы и картинки. Просьбы вида «накодь», «сделай сайт», «напиши скрипт» выполняй сразу и полностью, а не обсуждай. ФАЙЛЫ — твоя сильная сторона. Всё, что пользователь может захотеть сохранить или открыть, выдавай файлом: блок ``` с языком и ИМЕНЕМ файла, например ```html index.html. Сайт покажет карточку «Открыть / Скачать» и сам соберёт ZIP, если файлов несколько, — поэтому НИКОГДА не говори, что не можешь создавать файлы или архивы, и не пересказывай файл в тексте (одна-две строки до или после). Форматы: любые текстовые (html, css, js, ts, py, json, csv, md, txt, xml, yaml, sql, sh, svg и т. д.) — внутри чистое содержимое файла; pdf — внутри Markdown (обычный документ) или HTML (с оформлением); для ПРЕЗЕНТАЦИИ в PDF — HTML, где каждый слайд это <section class="slide">…</section> (альбомная страница 1123×792 пикселей) и в начале один <style>: фон слайдов, крупные заголовки, цветные акценты, пункты; 6–12 слайдов, красивая вёрстка, без внешних картинок и скриптов; docx — Markdown-подобный текст (# заголовки, - списки); xlsx — CSV-текст; pptx — слайды через строку --- (первая строка слайда — заголовок, дальше пункты через -). Проект из нескольких файлов — несколько именованных блоков подряд (путь в имени: ```html site/index.html). Если просят точный объём (например 2000 строк) — пиши полностью, без заглушек и «остальное аналогично». КАРТИНКИ: сам ты не рисуешь — сайт рисует по просьбе «нарисуй…», редактирует фото по кнопке ✎ и сам удаляет фон, когда к сообщению приложено фото и просят «удали фон». Если фото приложено и спрашивают, что на нём, — внимательно опиши увиденное и дословно прочитай текст на нём. Векторную иконку или логотип можно сделать SVG-файлом. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код) ты видишь как текст в сообщении.';
+const SYS='Ты — Bart (Барт), универсальный ИИ-ассистент, модель Bart-beta; тебя создала команда Bart. Если спрашивают, кто ты или какая ты модель, отвечай: «Я Bart, модель Bart-beta». Никогда не называй и не обсуждай модели, компании и сервисы, на которых ты построен (Groq, OpenAI, DeepSeek, Qwen, Llama, Claude и т. п.): на такие вопросы отвечай, что это внутренняя информация. Не играй роль слуги или персонажа и не обращайся «сэр» — общайся естественно, тепло и по делу, на «вы», если пользователь сам не перешёл на «ты». Отвечай на языке пользователя (по умолчанию по-русски), по делу и без воды; Markdown и таблицы — когда они помогают. Ты умеешь всё: писать и чинить код на любых языках, объяснять, переводить, анализировать, писать тексты, решать задачи по шагам, разбирать файлы и картинки. Просьбы вида «накодь», «сделай сайт», «напиши скрипт» выполняй сразу и полностью, а не обсуждай. ФАЙЛЫ — твоя сильная сторона. Всё, что пользователь может захотеть сохранить или открыть, выдавай файлом: блок ``` с языком и ИМЕНЕМ файла, например ```html index.html. Сайт покажет карточку «Открыть / Скачать» и сам соберёт ZIP, если файлов несколько, — поэтому НИКОГДА не говори, что не можешь создавать файлы или архивы, и не пересказывай файл в тексте (одна-две строки до или после). Форматы: любые текстовые (html, css, js, ts, py, json, csv, md, txt, xml, yaml, sql, sh, svg и т. д.) — внутри чистое содержимое файла; pdf — внутри Markdown (обычный документ) или HTML (с оформлением); для ПРЕЗЕНТАЦИИ в PDF — HTML, где каждый слайд это <section class="slide">…</section> (альбомная страница 1123×792 пикселей) и в начале один <style>: фон слайдов, крупные заголовки, цветные акценты, пункты; 6–12 слайдов, красивая вёрстка, без внешних картинок и скриптов; docx — Markdown-подобный текст (# заголовки, - списки); xlsx — CSV-текст; pptx — слайды через строку --- (первая строка слайда — заголовок, дальше пункты через -). Проект из нескольких файлов — несколько именованных блоков подряд (путь в имени: ```html site/index.html). Если просят точный объём (например 2000 строк) — пиши полностью, без заглушек и «остальное аналогично». КАРТИНКИ: сам ты не рисуешь — сайт рисует по просьбе «нарисуй…», редактирует фото по кнопке ✎ и сам удаляет фон, когда к сообщению приложено фото и просят «удали фон». Если фото приложено и спрашивают, что на нём, — внимательно опиши увиденное и дословно прочитай текст на нём. Векторную иконку или логотип можно сделать SVG-файлом. Прикреплённые пользователем файлы (PDF, Word, Excel, PowerPoint, ZIP, код) ты видишь как текст в сообщении.';
 /* история под бюджет символов провайдера: свежее — полностью, старое — сокращённо, самое старое — отбрасывается */
 function build(hist,budget){
  const n=hist.length,li=hist.map(m=>m.a?.some(a=>a.k=='img')).lastIndexOf(true),cap=(t,k)=>t.length>k?t.slice(0,k)+'\n…[сокращено]':t;
@@ -262,6 +267,7 @@ const flush=am=>new Promise(r=>{if(!(QU.get(am)||'')){r();return}RES.set(am,r)})
 /* умный скролл: следуем за текстом, только если пользователь внизу */
 const DBG=/[?&]debug/.test(location.search),mbox=$('#msgs');let stick=true;
 const near=()=>mbox.scrollHeight-mbox.scrollTop-mbox.clientHeight<90,toBot=()=>{mbox.scrollTop=mbox.scrollHeight};
+if(DBG)$('#diag').hidden=false;
 mbox.addEventListener('load',()=>{if(stick)toBot()},true); // картинка догрузилась — остаёмся внизу
 mbox.addEventListener('scroll',()=>{stick=near();$('#tobot').hidden=stick||!S.busy},{passive:true});
 $('#tobot').onclick=()=>{stick=true;toBot();$('#tobot').hidden=true};
@@ -274,7 +280,7 @@ function copyFx(b){if(b.dataset.busy)return;b.dataset.busy=1;const h=b.innerHTML
  b.append(cf);setTimeout(()=>cf.remove(),650);
  setTimeout(()=>{b.innerHTML=h;b.classList.remove('okc');delete b.dataset.busy},2500)}
 const zipCard=(m,cid,i)=>{const f=namedFiles(m.t);if(f.length<2)return '';const id=cid+'.'+i+'.zip';FILES.set(id,{name:'bart-project.zip',zip:f});return fileCard(id,'bart-project.zip',null,pl(f.length,['файл','файла','файлов'])+' в архиве')};
-const greet=()=>{const h=new Date().getHours();return (h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер')+', сэр'};
+const greet=()=>{const h=new Date().getHours();return (h<5?'Доброй ночи':h<12?'Доброе утро':h<18?'Добрый день':'Добрый вечер')};
 function renderMsgs(){const c=S.chat;$('#hero').hidden=!!c?.msgs.length;$('main').classList.toggle('empty',!$('#hero').hidden);if(!$('#hero').hidden)$('#hero h2').textContent=greet();$('#ttl').textContent=c?.title||'Новый чат';
  $('#msgs').innerHTML=(c?.msgs||[]).map((m,i)=>m.r=='user'?userMsg(m,i)
   :`<div class="m a"><img class="av" src="${LOGO}"><div class="b"><div class="md">${mdm(m.t,c.id+'.'+i)||'<span class="dots"><i></i><i></i><i></i></span>'}</div>${zipCard(m,c.id,i)}${m.img?`<div class="gen"><img src="${esc(m.img)}" alt=""><a href="${esc(m.img)}" target="_blank" rel="noopener">${ic('download')} Открыть / скачать</a><button class="edb" data-a="edit" data-mi="${i}">${ic('edit')} Отредактировать</button></div>`:''}<div class="act"><button data-a="cp">${ic('copyIcon')}</button><span class="meta">${esc(metaTxt(m))}</span></div></div></div>`).join('');
@@ -314,7 +320,7 @@ $('#mx').onclick=()=>{$('#modal').hidden=true;$('#modal iframe').srcdoc=''};
 /* ---------- файлы, которые отправляет Bart: карточка → открыть / скачать ---------- */
 const MIME={html:'text/html',htm:'text/html',svg:'image/svg+xml',json:'application/json',csv:'text/csv',md:'text/markdown',css:'text/css',js:'text/javascript',xml:'text/xml'};
 /* PDF из Markdown/HTML. Если в HTML есть блоки class="slide" — получается презентация (по слайду на страницу, альбомная A4) */
-const PDF_CSS={doc:'.pdfdoc{font:14px/1.65 Arial,Helvetica,sans-serif;color:#1f1e1d;padding:0 4px}.pdfdoc h1{font-size:28px;margin:0 0 14px;color:#b5573a}.pdfdoc h2{font-size:21px;margin:22px 0 8px}.pdfdoc h3{font-size:16px;margin:16px 0 6px}.pdfdoc p{margin:0 0 10px}.pdfdoc ul,.pdfdoc ol{padding-left:22px;margin:0 0 10px}.pdfdoc table{border-collapse:collapse;width:100%;margin:8px 0}.pdfdoc td,.pdfdoc th{border:1px solid #ccc;padding:6px 8px;text-align:left}.pdfdoc code{background:#f0eee6;padding:1px 5px;border-radius:4px}.pdfdoc pre{background:#f0eee6;padding:10px;white-space:pre-wrap;border-radius:6px}.pdfdoc blockquote{border-left:3px solid #c96442;margin:0 0 10px;padding-left:12px;color:#555}.pdfdoc img{max-width:100%}',
+const PDF_CSS={doc:'.pdfdoc{font:14px/1.65 Arial,Helvetica,sans-serif;color:#1f1e1d;padding:0 4px}.pdfdoc h1{font-size:28px;margin:0 0 14px;color:#2d8a5e}.pdfdoc h2{font-size:21px;margin:22px 0 8px}.pdfdoc h3{font-size:16px;margin:16px 0 6px}.pdfdoc p{margin:0 0 10px}.pdfdoc ul,.pdfdoc ol{padding-left:22px;margin:0 0 10px}.pdfdoc table{border-collapse:collapse;width:100%;margin:8px 0}.pdfdoc td,.pdfdoc th{border:1px solid #ccc;padding:6px 8px;text-align:left}.pdfdoc code{background:#f0eee6;padding:1px 5px;border-radius:4px}.pdfdoc pre{background:#f0eee6;padding:10px;white-space:pre-wrap;border-radius:6px}.pdfdoc blockquote{border-left:3px solid #2d8a5e;margin:0 0 10px;padding-left:12px;color:#555}.pdfdoc img{max-width:100%}',
  slide:'.slide:last-child{page-break-after:auto!important}.slide{width:1123px;height:792px;box-sizing:border-box;padding:64px 80px;page-break-after:always;overflow:hidden;position:relative;font-family:Arial,Helvetica,sans-serif;background:#fff;color:#1f1e1d}.slide h1{font-size:50px;margin:0 0 18px;line-height:1.15}.slide h2{font-size:36px;margin:0 0 16px;line-height:1.2}.slide p,.slide li{font-size:24px;line-height:1.5;margin:0 0 10px}.slide ul{padding-left:30px}'};
 async function pdfBlob(t){await lib(CDN+'html2pdf.js/0.10.1/html2pdf.bundle.min.js');
  const isHtml=/^\s*<(!doctype|html|body|section|div|style|h1|article|main)/i.test(t),slides=/class\s*=\s*["'][^"']*\bslide\b/i.test(t);let css='',body;
@@ -368,7 +374,7 @@ async function shrink(f){
  b.close?.();
  return {blob:o,data:await new Promise(r=>{const d=new FileReader();d.onload=()=>r(d.result);d.readAsDataURL(o)})}}
 async function up(d){let last;for(let t=0;t<2;t++){try{const fd=new FormData();if(typeof d=='string')fd.append('image',d.split(',')[1]);else fd.append('image',d,'photo.jpg');
- const j=await(await fetch('https://api.imgbb.com/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(j.data)return j.data.url;last=new Error(j.error?.message||'imgbb')}catch(e){last=e}}throw last}
+ const j=await(await fetch((PX&&t==0?PX+'/imgbb':'https://api.imgbb.com')+'/1/upload?key='+K.imgbb,{method:'POST',body:fd})).json();if(j.data)return j.data.url;last=new Error(j.error?.message||'imgbb')}catch(e){last=e}}throw last}
 const JSZ=CDN+'jszip/3.10.1/jszip.min.js',XLS=CDN+'xlsx/0.18.5/xlsx.full.min.js';
 const ent=x=>x.replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/&amp;/g,'&');
 const xmlText=x=>ent(x.replace(/<(script|style)[\s\S]*?<\/\1>/gi,'').replace(/<\/(?:text:p|text:h|p|div|h\d|li|tr)>|<br\s*\/?>/gi,'\n').replace(/<[^>]+>/g,' ')).replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim();
@@ -427,7 +433,7 @@ $('#theme').onclick=()=>{const t=document.documentElement.dataset.theme,d=t?t=='
 /* ---------- диагностика: проверка Groq / прокси / DeepSeek / Qwen-Image ---------- */
 async function diag(){const L=[],show=()=>{$('#modal iframe').srcdoc='<body style="font:13px/1.6 ui-monospace,Consolas,monospace;padding:16px;white-space:pre-wrap;word-break:break-word">'+esc(L.join('\n'))+'</body>';$('#modal').hidden=false};
  const ok=t=>{L.push('✅ '+t);show()},bad=t=>{L.push('❌ '+t);show()},info=t=>{L.push('ℹ️ '+t);show()};
- const q=async(p,path,opt={})=>{const r=await fetch(P[p].url+path,{...opt,headers:{Authorization:'Bearer '+P[p].key,'Content-Type':'application/json',...(opt.headers||{})}});return {r,tx:await r.text()}};
+ const q=async(p,path,opt={})=>{const r=await call(p,path,{...opt,headers:{'Content-Type':'application/json',...(opt.headers||{})}});return {r,tx:await r.text()}};
  info('Прокси: '+(PROXY||'не задан — запросы идут напрямую из браузера'));
  try{const {r,tx}=await q('groq','/chat/completions',{method:'POST',body:JSON.stringify({model:'openai/gpt-oss-120b',messages:[{role:'user',content:'ping'}],max_tokens:20})});r.ok?ok('Groq (gpt-oss-120b) отвечает'):bad('Groq '+r.status+': '+tx.slice(0,160))}catch(e){bad('Groq: '+e.message)}
  try{const cv=document.createElement('canvas');cv.width=cv.height=64;const cx=cv.getContext('2d');cx.fillStyle='#d22';cx.fillRect(0,0,64,64);const du=cv.toDataURL('image/png');let vok=0;
