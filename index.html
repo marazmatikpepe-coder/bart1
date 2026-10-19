@@ -6,17 +6,17 @@
 <meta name="theme-color" content="#faf9f5">
 <script>try{var t=localStorage.bart_theme;if(t)document.documentElement.dataset.theme=t}catch(e){}</script>
 <title>Bart — ИИ-ассистент</title>
-<link rel="icon" href="https://i.ibb.co/1pCX2Nr/image-Photoroom.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<link rel="icon" href="assets/logo.svg">
+<link rel="stylesheet" href="vendor/libs/highlight.js/11.9.0/styles/github-dark.min.css">
 <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-<section id="splash" class="screen"><img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart"></section>
+<section id="splash" class="screen"><img class="logo" src="assets/logo.svg" alt="Bart"></section>
 
 <section id="auth" class="screen" hidden>
   <div class="card">
-    <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="Bart">
+    <img class="logo" src="assets/logo.svg" alt="Bart">
     <h1>Bart</h1><p class="sub">ИИ-ассистент: текст, код, фото, файлы, картинки</p>
     <div class="tabs" role="tablist"><button type="button" data-tab="login" class="on" role="tab">Вход</button><button type="button" data-tab="reg" role="tab">Регистрация</button></div>
 
@@ -46,7 +46,7 @@
 
 <section id="verify" class="screen" hidden>
   <div class="card">
-    <img class="logo" src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">
+    <img class="logo" src="assets/logo.svg" alt="">
     <h1>Подтвердите почту</h1>
     <p class="sub">Мы отправили письмо со ссылкой на <b id="vem"></b>. Перейдите по ссылке (проверьте «Спам»), затем вернитесь сюда.</p>
     <button class="btn" id="vok">Я подтвердил</button>
@@ -58,7 +58,7 @@
 <div id="app" hidden>
   <div id="shade"></div>
   <aside id="side">
-    <div class="brand"><img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">Bart</div>
+    <div class="brand"><img src="assets/logo.svg" alt="">Bart</div>
     <button class="btn" id="new"><span data-ic="plus"></span> Новый чат</button>
     <div class="srch"><span data-ic="search"></span><input id="q" placeholder="Поиск по чатам"></div>
     <div id="list"></div>
@@ -67,7 +67,7 @@
   <main>
     <header><button class="icb" id="menu" data-ic="menu"></button><span id="ttl">Новый чат</span></header>
     <div id="hero">
-      <img src="https://i.ibb.co/1pCX2Nr/image-Photoroom.png" alt="">
+      <img src="assets/logo.svg" alt="">
       <h2>Чем помочь?</h2>
       <div class="sug"><button>Нарисуй уютный домик в лесу</button><button>Напиши код сайта-визитки</button><button>Разбери мой файл</button><button>Опиши, что на фото</button></div>
     </div>
@@ -93,9 +93,9 @@
 <div id="toast" hidden></div>
 <div id="modal" hidden><button class="icb" id="mx" data-ic="close"></button><iframe sandbox="allow-scripts"></iframe></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="vendor/libs/marked/12.0.2/marked.min.js"></script>
+<script src="vendor/libs/dompurify/3.1.6/purify.min.js"></script>
+<script src="vendor/libs/highlight.js/11.9.0/highlight.min.js"></script>
 <script type="module" src="js/app.js"></script>
 </body>
 </html>
